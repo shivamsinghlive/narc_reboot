@@ -90,6 +90,14 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, demoResult());
     }
 
+    // Incident investigations, attack chains and blast radius (exported by scripts/export_incidents.py)
+    if (url.pathname === '/api/incidents') {
+      const file = path.join(ROOT, 'data', 'incidents.json');
+      if (!existsSync(file)) return send(res, 404, { error: 'data/incidents.json missing. Run scripts/export_incidents.py' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      return res.end(await readFile(file));
+    }
+
     if (url.pathname === '/api/deep-dive' && req.method === 'POST') {
       const input = await body(req);
       if (input.jobId === 'demo') { const { demoDeepDive } = await import('./lib/demo.js'); return send(res, 200, demoDeepDive(input.layerId)); }

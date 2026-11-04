@@ -32,6 +32,9 @@ Click **Demo** for a full AI-mode sample, or paste a repo URL. Add your OpenAI k
 * **Architecture** — clickable layer graph. Fill and border colour = debt; pink halo = PR debt waiting to land; red dashed edges = layering violations. Click a layer to highlight what it depends on (cyan) and what depends on it (orange). Double-click to open its module graph. Drag the **timeline** (or ▶) to watch the 90-day forecast. You can colour by total, PR or inherited debt.
 * **Inspector** — score gauge, debt breakdown, stacked forecast chart with an "all PRs merged today" line, dependency chains with inherited points, blast radius, score drivers, PR debt items, backlog items, hotspots, modules, AI deep dive.
 * **Pull requests**, **Backlog forecast**, **Hotspots**, **Report** (exportable JSON).
+* **Investigations** — when something breaks: bad change, vendor outage, or attack? Three suspects scored with clues that cite log lines, a timeline across systems and a proposed fix. Runs on the Acme Cloud **synthetic logs** (`data/incidents.json`, exported by `scripts/export_incidents.py` from Narc's Python investigation engine; search results are simulated fixtures).
+* **MITRE map** — the incident attack chain step by step (before vs after removing the AI agent's unused permissions), plus an ATT&CK / ATLAS matrix that puts incident techniques next to the ones this repo's security scan found.
+* **Blast radius** — for this repo: every layer that imports the one you pick, directly or through others (computed live from the import graph). For incidents: the systems, keys and data a broken part or hijacked agent reaches, before and after the fix.
 
 ## Config (`.env` or Settings drawer)
 
@@ -60,5 +63,7 @@ lib/backlog.js       Jira / doc / CSV / issues → tasks, heuristics + LLM
 lib/forecast.js      time series + dependency propagation
 lib/pipeline.js      orchestration, exec summary, deep dive
 lib/demo.js          synthetic AI-mode dataset (same assemble() path)
+data/incidents.json  incident investigations, attack chain, blast graphs (synthetic logs)
+scripts/export_incidents.py  regenerates it from the Python Narc engine
 public/              UI (vanilla JS + Cytoscape)
 ```
