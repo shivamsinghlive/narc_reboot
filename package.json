@@ -1,0 +1,13 @@
+{
+  "name": "narc",
+  "version": "0.1.0",
+  "description": "Narc — tech-debt radar for GitHub repos: unmerged PRs, backlog and dependency-aware forecasts per architecture layer",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": { "node": ">=18.17" },
+  "license": "MIT"
+}

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Narc — Tech Debt Radar</title>
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236e5cf6'/><circle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='2.5' stroke-opacity='.55'/><path d='M16 16 L24 10' stroke='white' stroke-width='2.5' stroke-linecap='round'/><circle cx='16' cy='16' r='2.6' fill='white'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <script>
+    // Apply the saved theme before first paint (no flash)
+    try { const t = JSON.parse(localStorage.getItem('narc.theme') || '"system"'); if (t !== 'system') document.documentElement.dataset.theme = t; } catch {}
+  </script>
+</head>
+<body>
+  <div id="app" class="app" data-view="landing">
+    <!-- ===== Top bar ===== -->
+    <header class="topbar">
+      <button class="brand" id="brand" aria-label="Narc home">
+        <span class="brand-mark" aria-hidden="true"></span><span class="brand-name">narc</span>
+      </button>
+      <div class="crumb" id="topCrumb"></div>
+      <div class="top-status" id="topStatus" hidden></div>
+      <div class="top-actions">
+        <button class="search-btn" id="paletteBtn" aria-label="Search and commands (⌘K)">
+          <i data-icon="search"></i><span>Search or jump to…</span><kbd>⌘K</kbd>
+        </button>
+        <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" title="Theme"><i data-icon="sun"></i></button>
+        <button class="icon-btn" id="helpBtn" aria-label="How scores work" title="How scores work (?)"><i data-icon="help"></i></button>
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings" title="Settings"><i data-icon="settings"></i></button>
+      </div>
+    </header>
+
+    <!-- ===== Landing ===== -->
+    <main class="landing" id="landing">
+      <section class="hero">
+        <div class="hero-badge"><i data-icon="sparkles"></i> Forecast tech debt before it merges</div>
+        <h1>Where is your codebase<br />accumulating debt?</h1>
+        <p class="hero-sub">Paste a GitHub repo. Narc maps every layer and how they depend on each other, reads unmerged PRs and your roadmap, and shows how debt will spread over the next 90 days.</p>
+        <form class="hero-form" id="heroForm" novalidate>
+          <label class="sr-only" for="heroInput">GitHub repository URL</label>
+          <div class="hero-input">
+            <i data-icon="github"></i>
+            <input id="heroInput" placeholder="github.com/owner/repo" autocomplete="off" spellcheck="false" />
+            <kbd class="hint">/</kbd>
+          </div>
+          <button class="btn primary lg" type="submit">Analyze <i data-icon="arrow-right"></i></button>
+        </form>
+        <p class="field-error" id="heroError" role="alert" hidden></p>
+        <div class="examples">
+          <span>Try</span>
+          <button class="chip" data-repo="langchain-ai/open-canvas">langchain-ai/open-canvas</button>
+          <button class="chip" data-repo="fastapi/full-stack-fastapi-template">fastapi/full-stack-fastapi-template</button>
+          <button class="chip" data-repo="expressjs/express">expressjs/express</button>
+          <button class="chip ghost" id="demoBtn"><i data-icon="play"></i> Explore demo</button>
+        </div>
+        <div class="ai-note" id="aiNote"></div>
+      </section>
+      <section class="recent" id="recent" hidden>
+        <h2>Recent analyses</h2>
+        <div class="recent-list" id="recentList"></div>
+      </section>
+      <section class="how">
+        <div class="how-item"><span class="how-n">1</span><div><b>Map</b><p>Every file is assigned to a layer, and the real import graph between layers is built.</p></div></div>
+        <div class="how-item"><span class="how-n">2</span><div><b>Read</b><p>Every open PR diff and your Jira board, issues or design docs are checked for debt.</p></div></div>
+        <div class="how-item"><span class="how-n">3</span><div><b>Forecast</b><p>A 90-day score for each layer, including debt inherited from the layers it depends on.</p></div></div>
+      </section>
+    </main>
+
+    <!-- ===== Analyzing (before first results) ===== -->
+    <main class="analyzing" id="analyzing" hidden>
+      <div class="an-card">
+        <div class="an-head"><div class="pulse-ring"><i data-icon="radar"></i></div><div><h2 id="anTitle">Analyzing</h2><p id="anSub" class="muted"></p></div></div>
+        <ol class="steps" id="anSteps"></ol>
+        <p class="an-foot muted" id="anFoot">The architecture view appears as soon as static analysis finishes. AI findings fill in after that.</p>
+        <div class="an-error" id="anError" hidden></div>
+      </div>
+    </main>
+
+    <!-- ===== Dashboard ===== -->
+    <div class="dash" id="dash" hidden>
+      <nav class="sidebar" id="sidebar" aria-label="Sections">
+        <div class="nav" role="tablist">
+          <button class="nav-item" data-page="overview" role="tab"><i data-icon="grid"></i><span>Overview</span><kbd>1</kbd></button>
+          <div class="nav-group">Analyze</div>
+          <button class="nav-item" data-page="arch" role="tab"><i data-icon="network"></i><span>Architecture</span><kbd>2</kbd></button>
+          <button class="nav-item" data-page="security" role="tab"><i data-icon="shield"></i><span>Security</span><em class="nav-count" id="navSec"></em><kbd>3</kbd></button>
+          <button class="nav-item" data-page="hotspots" role="tab"><i data-icon="flame"></i><span>Hotspots</span><kbd>4</kbd></button>
+          <div class="nav-group">Change</div>
+          <button class="nav-item" data-page="prs" role="tab"><i data-icon="pr"></i><span>Pull requests</span><em class="nav-count" id="navPrs"></em><kbd>5</kbd></button>
+          <button class="nav-item" data-page="backlog" role="tab"><i data-icon="list"></i><span>Backlog</span><em class="nav-count" id="navBacklog"></em><kbd>6</kbd></button>
+          <div class="nav-group">Context</div>
+          <button class="nav-item" data-page="people" role="tab"><i data-icon="users"></i><span>People</span><em class="nav-count" id="navPeople"></em><kbd>7</kbd></button>
+          <button class="nav-item" data-page="timeline" role="tab"><i data-icon="clock"></i><span>Timeline</span><kbd>8</kbd></button>
+          <div class="nav-group">Output</div>
+          <button class="nav-item" data-page="report" role="tab"><i data-icon="file"></i><span>Report & agents</span><kbd>9</kbd></button>
+        </div>
+        <div class="side-section">
+          <div class="side-title">Layers <span class="muted" id="sideDay">today</span></div>
+          <div class="side-layers" id="sideLayers"></div>
+        </div>
+        <div class="side-foot" id="sideFoot"></div>
+      </nav>
+
+      <div class="content">
+        <section class="page" id="page-overview" data-page="overview"></section>
+        <section class="page page-arch" id="page-arch" data-page="arch">
+          <div class="canvas" id="canvas">
+            <svg id="graph" role="img" aria-label="Layer dependency graph"></svg>
+            <div class="canvas-top">
+              <div class="crumbs" id="graphCrumbs"></div>
+              <div class="toolbar-float">
+                <div class="seg" role="radiogroup" aria-label="Color by">
+                  <button data-color="total" class="on" role="radio" aria-checked="true">Total debt</button>
+                  <button data-color="pending" role="radio" aria-checked="false">PR debt</button>
+                  <button data-color="inherited" role="radio" aria-checked="false">Inherited</button>
+                  <button data-color="security" role="radio" aria-checked="false">Security</button>
+                </div>
+                <button class="tool-btn" id="supportBtn" aria-pressed="true" title="Show tests, infra and config layers"><i data-icon="layers"></i><span>Supporting</span></button>
+              </div>
+            </div>
+            <div class="zoom-ctl" aria-label="Zoom">
+              <button id="zoomIn" title="Zoom in" aria-label="Zoom in"><i data-icon="plus"></i></button>
+              <button id="zoomOut" title="Zoom out" aria-label="Zoom out"><i data-icon="minus"></i></button>
+              <button id="zoomFit" title="Fit (F)" aria-label="Fit to screen"><i data-icon="maximize"></i></button>
+            </div>
+            <div class="legend" id="legend"></div>
+            <div class="graph-tip" id="graphTip" role="tooltip" hidden></div>
+            <div class="minimap" id="minimap" hidden></div>
+            <div class="timeline" id="timeline">
+              <button class="play" id="playBtn" aria-label="Play forecast (Space)"><i data-icon="play"></i></button>
+              <div class="tl-body">
+                <div class="tl-head"><span>Forecast</span><b id="tlDay">Today</b></div>
+                <div class="tl-track" id="tlTrack"><input type="range" id="daySlider" min="0" max="6" value="0" step="1" aria-label="Forecast day" /><div class="tl-ticks" id="tlTicks"></div></div>
+              </div>
+              <div class="tl-index"><span class="muted">Repo index</span><b id="tlIndex">—</b></div>
+            </div>
+          </div>
+        </section>
+        <section class="page" id="page-security" data-page="security"></section>
+        <section class="page" id="page-prs" data-page="prs"></section>
+        <section class="page" id="page-backlog" data-page="backlog"></section>
+        <section class="page" id="page-hotspots" data-page="hotspots"></section>
+        <section class="page" id="page-people" data-page="people"></section>
+        <section class="page" id="page-timeline" data-page="timeline"></section>
+        <section class="page" id="page-report" data-page="report"></section>
+      </div>
+
+      <aside class="panel" id="panel" hidden aria-label="Details"></aside>
+    </div>
+  </div>
+
+  <!-- Command palette -->
+  <div class="palette-bg" id="paletteBg" hidden>
+    <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div class="palette-input"><i data-icon="search"></i><input id="paletteInput" placeholder="Search layers, PRs, files, backlog… or type a command" autocomplete="off" spellcheck="false" /><kbd>esc</kbd></div>
+      <div class="palette-list" id="paletteList" role="listbox"></div>
+      <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> open</span><span><kbd>1</kbd>–<kbd>9</kbd> sections · <kbd>?</kbd> help</span></div>
+    </div>
+  </div>
+
+  <!-- Settings sheet -->
+  <div class="sheet-bg" id="sheetBg" hidden></div>
+  <aside class="sheet" id="sheet" aria-hidden="true" aria-label="Settings">
+    <header class="sheet-head"><h2>Settings</h2><button class="icon-btn" id="sheetClose" aria-label="Close"><i data-icon="x"></i></button></header>
+    <div class="sheet-body">
+      <p class="note" id="serverNote"></p>
+      <section class="set-group">
+        <h3>OpenAI</h3>
+        <label>API key<input type="password" id="sOpenaiKey" placeholder="sk-…  (kept only in this browser)" /></label>
+        <div class="row2">
+          <label>Model<input id="sModel" placeholder="gpt-5-mini" list="modelList" /></label>
+          <label>Fast model <span class="muted">(light calls)</span><input id="sFastModel" placeholder="same as model, e.g. gpt-4.1-mini" list="modelList" /></label>
+        </div>
+        <label>Base URL<input id="sBaseUrl" placeholder="https://api.openai.com/v1" /></label>
+        <datalist id="modelList"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-5-nano"><option value="gpt-4.1"><option value="gpt-4.1-mini"></datalist>
+        <p class="hint-text">The fast model handles layer checks, doc extraction, backlog mapping and narratives; gpt-4.1-mini or gpt-5-nano make these about 2× faster. Without a key Narc runs on static analysis only. With a key you also get PR reviews, backlog mapping, narratives and deep dives. Repeat runs reuse cached AI answers.</p>
+      </section>
+      <section class="set-group">
+        <h3>GitHub</h3>
+        <label>Token<input type="password" id="sGithubToken" placeholder="ghp_…  (optional; needed for private repos)" /></label>
+        <div class="row2">
+          <label>PRs to analyze<input type="number" id="sMaxPRs" min="1" max="40" value="12" /></label>
+          <label class="check"><input type="checkbox" id="sIssues" checked /> Use GitHub Issues as backlog</label>
+        </div>
+      </section>
+      <section class="set-group">
+        <h3>Threat intel <span class="muted" style="font-weight:400">(optional)</span></h3>
+        <div class="row2">
+          <label>Tavily API key<input type="password" id="sTavilyKey" placeholder="tvly-…" /></label>
+          <label>Exa API key<input type="password" id="sExaKey" placeholder="exa key" /></label>
+        </div>
+        <p class="hint-text">Used to look up exploits, advisories and attack techniques for your vulnerable packages and frameworks. Dependency CVEs come from OSV.dev and need no key.</p>
+      </section>
+      <section class="set-group">
+        <h3>Jira Cloud</h3>
+        <label>Site<input id="sJiraSite" placeholder="https://your-team.atlassian.net" /></label>
+        <div class="row2">
+          <label>Email<input id="sJiraEmail" placeholder="you@company.com" /></label>
+          <label>API token<input type="password" id="sJiraToken" placeholder="Atlassian API token" /></label>
+        </div>
+        <label>JQL<input id="sJiraJql" placeholder="project = SHOP AND statusCategory != Done" /></label>
+      </section>
+      <section class="set-group">
+        <h3>Design doc / PRD</h3>
+        <label>Paste markdown, a task list, or a Jira/Linear CSV export<textarea id="sDoc" rows="6" placeholder="## Q1 roadmap&#10;- Add Klarna payments&#10;- Refactor pricing engine into rules"></textarea></label>
+        <label class="file-drop"><input type="file" id="sDocFile" accept=".md,.mdx,.txt,.csv" /><i data-icon="upload"></i><span>Upload .md or .csv</span><span class="muted" id="sDocName"></span></label>
+      </section>
+      <section class="set-group">
+        <h3>Appearance</h3>
+        <div class="seg wide" id="themeSeg"><button data-theme-opt="system">System</button><button data-theme-opt="light">Light</button><button data-theme-opt="dark">Dark</button></div>
+      </section>
+    </div>
+    <footer class="sheet-foot"><button class="btn" id="sheetCancel">Cancel</button><button class="btn primary" id="sheetSave">Save</button></footer>
+  </aside>
+
+  <!-- Help modal -->
+  <div class="modal-bg" id="helpBg" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <header><h2 id="helpTitle">How scores work</h2><button class="icon-btn" id="helpClose" aria-label="Close"><i data-icon="x"></i></button></header>
+      <div class="modal-body" id="helpBody"></div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
