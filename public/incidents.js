@@ -25,7 +25,9 @@
   const when = (t) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
   const ago = (t) => { const s = (Date.now() - new Date(t)) / 1000; return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} days ago`; };
   const linkify = (html) => html.replace(/(https?:\/\/[^\s<)"]+[^\s<)".,:;])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-  const code = (s) => linkify(esc(s).replace(/`([^`]+)`/g, '<code>$1</code>'));
+  // Evidence text is never linkified (it can contain attacker URLs); only Narc's own fix steps get links.
+  const code = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+  const fixHtml = (s) => linkify(code(s));
   const techUrl = (id) => (id.startsWith('AML.') ? `https://atlas.mitre.org/techniques/${id}` : `https://attack.mitre.org/techniques/${id.replace('.', '/')}/`);
   const techMeta = (id) => I.data?.techniques?.[id] || S.data?.security?.mitre?.find((t) => t.id === id) || { name: id, tactic: 'Other' };
   const techBtn = (id) => { const t = techMeta(id); return `<button class="tech ${id.startsWith('AML.') ? 'atlas' : ''}" data-inc-tech="${esc(id)}" title="${esc(t.name)} · open in MITRE map"><b>${esc(id)}</b>${esc(t.name.length > 30 ? t.name.slice(0, 29) + '…' : t.name)}</button>`; };
@@ -124,7 +126,7 @@
           ${v.timeline.map((e) => `<li class="${e.key ? 'key' : ''}"><button data-inc-ev="${esc(e.id)}"><span class="mono muted">${when(e.ts)}</span><span class="pill">${esc(e.source)}</span><span class="s">${esc(e.summary)}</span></button>${I.evOpen.has(e.id) ? rawHtml(c, e.id) : ''}</li>`).join('')}
         </ol></div></div>
         <div class="card"><div class="card-h"><h3>Proposed fix</h3><span class="sub">a person approves; Narc changes nothing itself</span></div><div class="card-b">
-          <ol class="inc-fix">${v.fix.map((f) => `<li>${code(f)}</li>`).join('')}</ol>
+          <ol class="inc-fix">${v.fix.map((f) => `<li>${fixHtml(f)}</li>`).join('')}</ol>
           ${c.plain_fix ? `<p class="muted inc-small" style="margin-top:10px">In plain words: ${esc(c.plain_fix)}</p>` : ''}
           ${c.files?.length ? `<p class="muted inc-small" style="margin-top:10px">${plural(c.files.length, 'file')} changed, in ${c.roots.length ? c.roots.map((r) => esc(lname(r))).join(', ') : 'no mapped layer'}.</p>` : ''}
           <button class="btn sm" data-inc-blast="${c.id}">${icon('radar')} What else could break? Blast radius</button>
