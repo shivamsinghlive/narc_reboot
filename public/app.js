@@ -146,7 +146,8 @@
   function fillSettings() {
     for (const [id, k] of Object.entries(FIELDS)) $('#' + id).value = store.get(k, id === 'sMaxPRs' ? 12 : '');
     $('#sIssues').checked = store.get('includeIssues', true);
-    $('#sLocalAi').checked = store.get('localAi', false);
+    // Until the user chooses, show (and use) the server's NARC_LOCAL_AI default
+    $('#sLocalAi').checked = store.get('localAi', !!health.localAi);
     $('#sDocName').textContent = store.get('docName', '');
     $$('#themeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.themeOpt === store.get('theme', 'system')));
   }
@@ -215,7 +216,7 @@
     const st = settings();
     const payload = {
       repoUrl: `https://github.com/${repo}`, openaiKey: st.openaiKey, model: st.model, fastModel: st.fastModel, tavilyKey: st.tavilyKey, exaKey: st.exaKey, openaiBaseUrl: st.openaiBaseUrl, githubToken: st.githubToken, maxPRs: +st.maxPRs || 12,
-      includeIssues: store.get('includeIssues', true), localAi: store.get('localAi', false), docText: st.docText, docName: store.get('docName', '') || 'Design doc',
+      includeIssues: store.get('includeIssues', true), localAi: store.get('localAi', null), docText: st.docText, docName: store.get('docName', '') || 'Design doc',
       jira: { site: st.jiraSite, email: st.jiraEmail, token: st.jiraToken, jql: st.jiraJql },
     };
     showAnalyzing(repo);

@@ -50,12 +50,14 @@ function startJob(input) {
   const id = crypto.randomBytes(6).toString('hex');
   const job = { id, events: [], listeners: new Set(), status: 'running', result: null, private: null, created: Date.now(), egressFrom: egress.length ? egress.at(-1).ts + 1 : Date.now() };
   const emit = (ev) => {
-    if (ev.type === 'partial') { job.result = ev.result; job.private = ev.private; ev.result.jobId = id; ev = { type: 'partial', phase: ev.phase, result: ev.result }; job.events = job.events.filter((e) => e.type !== 'partial'); }
+    if (ev.type === 'partial') { job.result = ev.result; job.private = ev.private; ev.result.jobId = id; ev.result.localAi = job.localAi; ev = { type: 'partial', phase: ev.phase, result: ev.result }; job.events = job.events.filter((e) => e.type !== 'partial'); }
     job.events.push(ev); for (const l of job.listeners) l(ev);
   };
   jobs.set(id, job);
   // Local AI: analysis runs on Ollama on this laptop, so code and PR text never leave it.
-  const local = input.localAi ?? env.NARC_LOCAL_AI === '1';
+  // An explicit choice from the browser wins; when the browser hasn't chosen, the server's NARC_LOCAL_AI applies.
+  const local = typeof input.localAi === 'boolean' ? input.localAi : env.NARC_LOCAL_AI === '1';
+  job.localAi = local;
   const opts = {
     repoUrl: input.repoUrl,
     openaiKey: local ? 'local' : input.openaiKey || env.OPENAI_API_KEY,
@@ -73,6 +75,8 @@ function startJob(input) {
       token: input.jira?.token || env.JIRA_TOKEN, jql: input.jira?.jql || env.JIRA_JQL,
     },
   };
+  // Remembered so follow-up AI calls for this analysis (deep dives) use the same AI it ran on
+  job.ai = { openaiKey: opts.openaiKey, model: opts.model, openaiBaseUrl: opts.openaiBaseUrl };
   analyze(opts, emit)
     .then(({ result, private: priv }) => { job.status = 'done'; job.egressTo = Date.now(); job.result = result; job.private = priv; result.jobId = id; result.localAi = local; emit({ type: 'done', result }); })
     .catch((e) => { job.status = 'error'; console.error(e); emit({ type: 'error', message: e.message || String(e) }); });
@@ -113,7 +117,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/egress') {
       const job = jobs.get(url.searchParams.get('jobId'));
       const from = job?.egressFrom || 0;
-      return send(res, 200, { local: !!job?.result?.localAi, calls: egress.filter((e) => e.ts >= from) });
+      return send(res, 200, { local: !!job?.localAi, calls: egress.filter((e) => e.ts >= from) });
     }
 
     // Privacy: who is this data recipient, what do they keep (Tavily + Exa, only the company name is searched)
@@ -158,7 +162,9 @@ const server = http.createServer(async (req, res) => {
       if (input.jobId === 'demo') { const { demoDeepDive } = await import('./lib/demo.js'); return send(res, 200, demoDeepDive(input.layerId)); }
       const job = jobs.get(input.jobId);
       if (!job?.result) return send(res, 404, { error: 'Analysis not found (server restarted?) — re-run the analysis.' });
-      const out = await deepDive({ job, layerId: input.layerId, openaiKey: input.openaiKey || env.OPENAI_API_KEY, model: input.model || env.OPENAI_MODEL, openaiBaseUrl: input.openaiBaseUrl || env.OPENAI_BASE_URL });
+      // A Local AI analysis keeps its deep dives local too: they send hotspot code excerpts, which must not reach a cloud model.
+      const ai = job.localAi ? job.ai : { openaiKey: input.openaiKey || env.OPENAI_API_KEY, model: input.model || env.OPENAI_MODEL, openaiBaseUrl: input.openaiBaseUrl || env.OPENAI_BASE_URL };
+      const out = await deepDive({ job, layerId: input.layerId, ...ai });
       return send(res, 200, out);
     }
 
