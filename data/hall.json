@@ -1,0 +1,175 @@
+[
+  {
+    "repo": "mfts/papermark",
+    "fullName": "papermark/papermark",
+    "description": "Papermark is the open-source DocSend alternative  and secure data rooms with built-in analytics and custom domains.",
+    "grade": "F",
+    "score": 21,
+    "verdict": "Failing",
+    "recipients": [
+      {
+        "name": "Segment",
+        "cat": "analytics"
+      },
+      {
+        "name": "PostHog",
+        "cat": "analytics"
+      },
+      {
+        "name": "OpenAI",
+        "cat": "ai"
+      },
+      {
+        "name": "Tinybird",
+        "cat": "analytics"
+      },
+      {
+        "name": "Google Analytics",
+        "cat": "analytics"
+      },
+      {
+        "name": "Resend",
+        "cat": "messaging"
+      },
+      {
+        "name": "Stripe",
+        "cat": "payments"
+      }
+    ],
+    "flows": 20,
+    "top": "Sends email to PostHog",
+    "scannedAt": "2026-11-07T22:42:01.305Z"
+  },
+  {
+    "repo": "dubinc/dub",
+    "fullName": "dubinc/dub.link",
+    "description": "The modern link attribution platform. Loved by world-class engineering teams at Twilio, Zillow, Jobber, Vercel, Raycast, and more.",
+    "grade": "D",
+    "score": 55,
+    "verdict": "Poor",
+    "recipients": [
+      {
+        "name": "Plain",
+        "cat": "marketing"
+      },
+      {
+        "name": "Anthropic",
+        "cat": "ai"
+      },
+      {
+        "name": "Tinybird",
+        "cat": "analytics"
+      },
+      {
+        "name": "HubSpot",
+        "cat": "marketing"
+      },
+      {
+        "name": "Segment",
+        "cat": "analytics"
+      },
+      {
+        "name": "Stripe",
+        "cat": "payments"
+      },
+      {
+        "name": "Resend",
+        "cat": "messaging"
+      }
+    ],
+    "flows": 5,
+    "top": "Sends email, full name to Plain",
+    "scannedAt": "2026-11-07T22:42:05.986Z"
+  },
+  {
+    "repo": "formbricks/formbricks",
+    "fullName": "formbricks/formbricks",
+    "description": "Open Source Qualtrics Alternative",
+    "grade": "C",
+    "score": 70,
+    "verdict": "Fair",
+    "recipients": [
+      {
+        "name": "PostHog",
+        "cat": "analytics"
+      },
+      {
+        "name": "Google Analytics",
+        "cat": "analytics"
+      },
+      {
+        "name": "Sentry",
+        "cat": "errors"
+      },
+      {
+        "name": "Stripe",
+        "cat": "payments"
+      }
+    ],
+    "flows": 6,
+    "top": "Sends email to PostHog",
+    "scannedAt": "2026-11-07T22:46:07.210Z"
+  },
+  {
+    "repo": "documenso/documenso",
+    "fullName": "documenso/documenso",
+    "description": "The Open Source DocuSign Alternative.",
+    "grade": "C",
+    "score": 70,
+    "verdict": "Fair",
+    "recipients": [
+      {
+        "name": "PostHog",
+        "cat": "analytics"
+      },
+      {
+        "name": "Plain",
+        "cat": "marketing"
+      },
+      {
+        "name": "Stripe",
+        "cat": "payments"
+      },
+      {
+        "name": "Datadog",
+        "cat": "errors"
+      },
+      {
+        "name": "Resend",
+        "cat": "messaging"
+      }
+    ],
+    "flows": 7,
+    "top": "Sends email to Segment",
+    "scannedAt": "2026-11-07T22:44:33.234Z"
+  },
+  {
+    "repo": "excalidraw/excalidraw",
+    "fullName": "excalidraw/excalidraw",
+    "description": "Virtual whiteboard for sketching hand-drawn like diagrams",
+    "grade": "A",
+    "score": 98,
+    "verdict": "Excellent",
+    "recipients": [
+      {
+        "name": "Sentry",
+        "cat": "errors"
+      }
+    ],
+    "flows": 0,
+    "top": null,
+    "scannedAt": "2026-11-07T22:47:11.504Z"
+  },
+  {
+    "repo": "umami-software/umami",
+    "fullName": "umami-software/umami",
+    "description": "Umami is a privacy-first web and product analytics platform. Traffic, campaigns, behavior, conversions, and revenue in one place. No cookies, no surveillance, self-hosted or in the cloud.",
+    "grade": "A",
+    "score": 100,
+    "verdict": "Excellent",
+    "recipients": [],
+    "flows": 0,
+    "top": null,
+    "scannedAt": "2026-11-07T22:43:16.259Z"
+  }
+]

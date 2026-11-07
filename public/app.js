@@ -247,7 +247,7 @@
       else if (ev.type === 'partial') {
         const first = !gotData; gotData = true;
         load(ev.result, { keep: !first });
-        if (first) { setView('dash'); setPage('overview'); }
+        if (first) { setView('dash'); setPage(ev.result.privacy ? 'privacy' : 'overview'); }
         S.statusP = ev.phase === 'static' ? 0.15 : 0.85;
         setStatus({ text: liveStatusText() || (ev.phase === 'static' ? 'AI agents working' : 'AI writing summary'), p: S.statusP });
         if (!first) toast('AI reviews are in. PR and backlog debt updated.');
@@ -255,7 +255,7 @@
         es.close(); S.live = false;
         const first = !gotData;
         load(ev.result, { keep: !first });
-        if (first) { setView('dash'); setPage('overview'); }
+        if (first) { setView('dash'); setPage(ev.result.privacy ? 'privacy' : 'overview'); }
         setStatus(null); saveRecent(ev.result); renderSidebar();
         if (!first) toast(ev.result.mode === 'ai' ? 'AI analysis complete' : 'Analysis complete');
       } else if (ev.type === 'error') {

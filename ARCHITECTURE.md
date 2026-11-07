@@ -88,7 +88,7 @@ flowchart TB
 
 **PR changes.** Added lines in manifests that pull in a recipient package, added code that starts talking to a new recipient, and the same flow rules on added code.
 
-**Score.** `100 − min(55, flow points) − min(30, recipient points) − min(15, PR points)`, where flow points grow steeply with severity. Grades A to F map to *Doesn't watch you*, *Mostly private*, *Watched*, *Tracked* and *Big Brother*.
+**Score.** `100 − min(55, flow points) − min(30, recipient points) − min(15, PR points)`, where flow points grow steeply with severity. Grades: A Excellent (90+), B Good (75+), C Fair (60+), D Poor (40+), F Failing.
 
 **Dossiers** (`researchRecipient`). Tavily (advanced search with an answer) and Exa (highlights) are queried with the company name and website, restricted to the company's own domain first and the open web only if that's empty. `policyFlags()` reads the answer sentence by sentence and returns yes / no / not stated for *sells data*, *ads* and *AI training*: a sentence with a negation is "no", and one that's unsure ("doesn't say whether…") is skipped, so absence never becomes "yes".
 

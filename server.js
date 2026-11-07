@@ -116,8 +116,9 @@ const server = http.createServer(async (req, res) => {
     // What Narc sent while analysing this repo (and anything since, e.g. recipient research)
     if (url.pathname === '/api/egress') {
       const job = jobs.get(url.searchParams.get('jobId'));
-      const from = job?.egressFrom || 0;
-      return send(res, 200, { local: !!job?.localAi, calls: egress.filter((e) => e.ts >= from) });
+      const from = job?.egressFrom || 0, to = job?.egressTo || Infinity;
+      // This analysis's own requests, plus company research done on its Privacy tab afterwards
+      return send(res, 200, { local: !!job?.localAi, calls: egress.filter((e) => e.ts >= from && (e.ts <= to || /Tavily|Exa/.test(e.who) && /privacy policy/i.test(e.sent))) });
     }
 
     // Privacy: who is this data recipient, what do they keep (Tavily + Exa, only the company name is searched)
@@ -126,6 +127,14 @@ const server = http.createServer(async (req, res) => {
       const { researchRecipient } = await import('./lib/privacy.js');
       try { return send(res, 200, await researchRecipient({ name: String(input.name || '').slice(0, 60), domain: /^[\w.-]+$/.test(input.domain || '') ? input.domain : undefined, tavilyKey: input.tavilyKey || env.TAVILY_API_KEY, exaKey: input.exaKey || env.EXA_API_KEY })); }
       catch (e) { return send(res, 502, { error: e.message }); }
+    }
+
+    // Hall of Shame on the landing page: real scans written by scripts/hall_of_shame.mjs
+    if (url.pathname === '/api/hall') {
+      const file = path.join(ROOT, 'data', 'hall.json');
+      if (!existsSync(file)) return send(res, 200, []);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      return res.end(await readFile(file));
     }
 
     if (url.pathname === '/api/demo') {

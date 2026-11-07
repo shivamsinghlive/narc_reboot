@@ -28,7 +28,7 @@ And it looks ahead: **open PRs that would add a new tracker or a new flow of per
 
 ## Privacy tab
 
-* **Privacy score and grade**, from *Doesn't watch you* (A) to *Big Brother* (F).
+* **Privacy score and grade**: A (Excellent) to F (Failing).
 * **Telescreen**: personal data in the code on the left, the app in the middle, everyone who receives it on the right. Animated lines show real flows. Click a company for its dossier.
 * **Recipient dossiers (Tavily + Exa)**: only the company name and website are searched, the company's own site first. Yes / No / Not stated for *sells data*, *ads* and *AI training*, the retention period when stated, and every source linked.
 * **Data flows in the code**, grouped by kind: shared with third parties, sent to AI models, written to logs, stored unsafely (browser storage, unencrypted sensitive columns), leaked in URLs. Each one has *who can read it* and *how to fix it*.
@@ -45,7 +45,7 @@ And it looks ahead: **open PRs that would add a new tracker or a new flow of per
 
 ### Example: `dubinc/dub`
 
-Narc grades it **D · Tracked**: 7 recipients (Plain, Anthropic, Tinybird, HubSpot, Segment, Stripe, Resend) and real flows such as *sends email and full name to Plain* (`apps/web/lib/plain/upsert-plain-customer.ts`), *puts email in a URL* and *writes email to logs*. Plain's dossier, from plain.com's own legal pages: sells data **No**, ads **No**, AI training **No**.
+Narc grades it **D · Poor**: 7 recipients (Plain, Anthropic, Tinybird, HubSpot, Segment, Stripe, Resend) and real flows such as *sends email and full name to Plain* (`apps/web/lib/plain/upsert-plain-customer.ts`), *puts email in a URL* and *writes email to logs*. Plain's dossier, from plain.com's own legal pages: sells data **No**, ads **No**, AI training **No**.
 
 Detection is pattern-based static analysis, so treat findings as leads to review, not verdicts.
 
