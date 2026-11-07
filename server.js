@@ -17,6 +17,28 @@ if (existsSync(path.join(ROOT, '.env'))) {
   }
 }
 const env = process.env;
+
+/* Every request Narc makes off this machine, logged with what it sent (the "What Narc sent" tab).
+   Local calls (Ollama on 127.0.0.1) are recorded too, marked as staying on the laptop. */
+const egress = [];
+const PURPOSE = [[/api\.github\.com|codeload\.github\.com|github\.com/, 'GitHub', 'Read public repo data (code archive, PRs, CI runs)'], [/api\.tavily\.com/, 'Tavily', 'Web search'], [/api\.exa\.ai/, 'Exa', 'Web search'],
+  [/api\.openai\.com/, 'OpenAI', 'AI analysis: code and PR text are in this request'], [/127\.0\.0\.1|localhost/, 'Local AI', 'Stays on this laptop'], [/api\.osv\.dev/, 'OSV.dev', 'Look up package versions for known CVEs'],
+  [/githubstatus\.com|status\.npmjs\.org|status\.python\.org/, 'Status pages', 'Check for vendor outages'], [/registry\.npmjs\.org|api\.npmjs\.org|pypi\.org/, 'Package registries', 'Check if a new package is real']];
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (url, init = {}) => {
+  try {
+    const u = new URL(typeof url === 'string' ? url : url.url);
+    if (!(u.port === String(env.PORT || 4317) && /^(127\.0\.0\.1|localhost)$/.test(u.hostname))) {
+      const [, who, why] = PURPOSE.find(([re]) => re.test(u.hostname)) || [null, u.hostname, 'Other'];
+      const body = typeof init.body === 'string' ? init.body : '';
+      let sent = '';
+      try { const j = JSON.parse(body || '{}'); sent = j.query || (j.messages ? `${j.messages.length} messages, ${body.length.toLocaleString()} characters` : ''); } catch {}
+      egress.push({ ts: Date.now(), host: u.hostname, path: u.pathname.slice(0, 80), method: (init.method || 'GET').toUpperCase(), bytes: body.length, who, why, sent: String(sent).slice(0, 300), local: /^(127\.0\.0\.1|localhost)$/.test(u.hostname) });
+      if (egress.length > 3000) egress.splice(0, egress.length - 3000);
+    }
+  } catch {}
+  return realFetch(url, init);
+};
 const PORT = Number(env.PORT || 4317);
 const jobs = new Map();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
@@ -26,18 +48,20 @@ const body = (req) => new Promise((ok, bad) => { let d = ''; req.on('data', (c) 
 
 function startJob(input) {
   const id = crypto.randomBytes(6).toString('hex');
-  const job = { id, events: [], listeners: new Set(), status: 'running', result: null, private: null, created: Date.now() };
+  const job = { id, events: [], listeners: new Set(), status: 'running', result: null, private: null, created: Date.now(), egressFrom: egress.length ? egress.at(-1).ts + 1 : Date.now() };
   const emit = (ev) => {
     if (ev.type === 'partial') { job.result = ev.result; job.private = ev.private; ev.result.jobId = id; ev = { type: 'partial', phase: ev.phase, result: ev.result }; job.events = job.events.filter((e) => e.type !== 'partial'); }
     job.events.push(ev); for (const l of job.listeners) l(ev);
   };
   jobs.set(id, job);
+  // Local AI: analysis runs on Ollama on this laptop, so code and PR text never leave it.
+  const local = input.localAi ?? env.NARC_LOCAL_AI === '1';
   const opts = {
     repoUrl: input.repoUrl,
-    openaiKey: input.openaiKey || env.OPENAI_API_KEY,
-    model: input.model || env.OPENAI_MODEL || 'gpt-5-mini',
-    fastModel: input.fastModel || env.OPENAI_FAST_MODEL || '',
-    openaiBaseUrl: input.openaiBaseUrl || env.OPENAI_BASE_URL,
+    openaiKey: local ? 'local' : input.openaiKey || env.OPENAI_API_KEY,
+    model: local ? env.LOCAL_MODEL || 'qwen2.5:7b' : input.model || env.OPENAI_MODEL || 'gpt-5-mini',
+    fastModel: local ? env.LOCAL_FAST_MODEL || env.LOCAL_MODEL || 'qwen2.5:7b' : input.fastModel || env.OPENAI_FAST_MODEL || '',
+    openaiBaseUrl: local ? env.LOCAL_BASE_URL || 'http://127.0.0.1:11434/v1' : input.openaiBaseUrl || env.OPENAI_BASE_URL,
     githubToken: input.githubToken || env.GITHUB_TOKEN,
     tavilyKey: input.tavilyKey || env.TAVILY_API_KEY, exaKey: input.exaKey || env.EXA_API_KEY,
     maxPRs: input.maxPRs || 12,
@@ -50,7 +74,7 @@ function startJob(input) {
     },
   };
   analyze(opts, emit)
-    .then(({ result, private: priv }) => { job.status = 'done'; job.result = result; job.private = priv; result.jobId = id; emit({ type: 'done', result }); })
+    .then(({ result, private: priv }) => { job.status = 'done'; job.egressTo = Date.now(); job.result = result; job.private = priv; result.jobId = id; result.localAi = local; emit({ type: 'done', result }); })
     .catch((e) => { job.status = 'error'; console.error(e); emit({ type: 'error', message: e.message || String(e) }); });
   return job;
 }
@@ -61,7 +85,7 @@ setInterval(() => { const cut = Date.now() - 6 * 3600e3; for (const [k, j] of jo
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
-    if (url.pathname === '/api/health') return send(res, 200, { ok: true, openai: !!env.OPENAI_API_KEY, model: env.OPENAI_MODEL || 'gpt-5-mini', fastModel: env.OPENAI_FAST_MODEL || '', github: !!env.GITHUB_TOKEN, tavily: !!env.TAVILY_API_KEY, exa: !!env.EXA_API_KEY, jira: !!(env.JIRA_SITE && env.JIRA_TOKEN) });
+    if (url.pathname === '/api/health') return send(res, 200, { ok: true, localAi: env.NARC_LOCAL_AI === '1', localModel: env.LOCAL_MODEL || 'qwen2.5:7b', openai: !!env.OPENAI_API_KEY, model: env.OPENAI_MODEL || 'gpt-5-mini', fastModel: env.OPENAI_FAST_MODEL || '', github: !!env.GITHUB_TOKEN, tavily: !!env.TAVILY_API_KEY, exa: !!env.EXA_API_KEY, jira: !!(env.JIRA_SITE && env.JIRA_TOKEN) });
 
     if (url.pathname === '/api/jobs' && req.method === 'POST') {
       const input = await body(req);
@@ -83,6 +107,21 @@ const server = http.createServer(async (req, res) => {
       const ping = setInterval(() => res.write(': ping\n\n'), 15000);
       req.on('close', () => { job.listeners.delete(l); clearInterval(ping); });
       return;
+    }
+
+    // What Narc sent while analysing this repo (and anything since, e.g. recipient research)
+    if (url.pathname === '/api/egress') {
+      const job = jobs.get(url.searchParams.get('jobId'));
+      const from = job?.egressFrom || 0;
+      return send(res, 200, { local: !!job?.result?.localAi, calls: egress.filter((e) => e.ts >= from) });
+    }
+
+    // Privacy: who is this data recipient, what do they keep (Tavily + Exa, only the company name is searched)
+    if (url.pathname === '/api/privacy/research' && req.method === 'POST') {
+      const input = await body(req);
+      const { researchRecipient } = await import('./lib/privacy.js');
+      try { return send(res, 200, await researchRecipient({ name: String(input.name || '').slice(0, 60), domain: /^[\w.-]+$/.test(input.domain || '') ? input.domain : undefined, tavilyKey: input.tavilyKey || env.TAVILY_API_KEY, exaKey: input.exaKey || env.EXA_API_KEY })); }
+      catch (e) { return send(res, 502, { error: e.message }); }
     }
 
     if (url.pathname === '/api/demo') {

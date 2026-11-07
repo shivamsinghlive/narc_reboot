@@ -88,6 +88,7 @@
           <div class="nav-group">Analyze</div>
           <button class="nav-item" data-page="arch" role="tab"><i data-icon="network"></i><span>Architecture</span><kbd>2</kbd></button>
           <button class="nav-item" data-page="security" role="tab"><i data-icon="shield"></i><span>Security</span><em class="nav-count" id="navSec"></em><kbd>3</kbd></button>
+          <button class="nav-item" data-page="privacy" role="tab"><i data-icon="radar"></i><span>Privacy</span><em class="nav-count" id="navPriv"></em></button>
           <button class="nav-item" data-page="hotspots" role="tab"><i data-icon="flame"></i><span>Hotspots</span><kbd>4</kbd></button>
           <div class="nav-group">Incidents</div>
           <button class="nav-item" data-page="investigate" role="tab"><i data-icon="search"></i><span>Investigations</span><em class="nav-count" id="navInv"></em></button>
@@ -145,6 +146,7 @@
           </div>
         </section>
         <section class="page" id="page-security" data-page="security"></section>
+        <section class="page" id="page-privacy" data-page="privacy"></section>
         <section class="page" id="page-prs" data-page="prs"></section>
         <section class="page" id="page-backlog" data-page="backlog"></section>
         <section class="page" id="page-hotspots" data-page="hotspots"></section>
@@ -183,6 +185,7 @@
           <label>Fast model <span class="muted">(light calls)</span><input id="sFastModel" placeholder="same as model, e.g. gpt-4.1-mini" list="modelList" /></label>
         </div>
         <label>Base URL<input id="sBaseUrl" placeholder="https://api.openai.com/v1" /></label>
+        <label class="check"><input type="checkbox" id="sLocalAi" /> <span><b>Local AI</b>: run the AI on this laptop (Ollama). Your code and PRs never leave it. Slower.</span></label>
         <datalist id="modelList"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-5-nano"><option value="gpt-4.1"><option value="gpt-4.1-mini"></datalist>
         <p class="hint-text">The fast model handles layer checks, doc extraction, backlog mapping and narratives; gpt-4.1-mini or gpt-5-nano make these about 2× faster. Without a key Narc runs on static analysis only. With a key you also get PR reviews, backlog mapping, narratives and deep dives. Repeat runs reuse cached AI answers.</p>
       </section>
@@ -235,5 +238,6 @@
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <script src="app.js"></script>
   <script src="incidents.js"></script>
+  <script src="privacy.js"></script>
 </body>
 </html>

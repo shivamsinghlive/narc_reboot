@@ -146,6 +146,7 @@
   function fillSettings() {
     for (const [id, k] of Object.entries(FIELDS)) $('#' + id).value = store.get(k, id === 'sMaxPRs' ? 12 : '');
     $('#sIssues').checked = store.get('includeIssues', true);
+    $('#sLocalAi').checked = store.get('localAi', false);
     $('#sDocName').textContent = store.get('docName', '');
     $$('#themeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.themeOpt === store.get('theme', 'system')));
   }
@@ -154,6 +155,7 @@
   function saveSheet() {
     for (const [id, k] of Object.entries(FIELDS)) store.set(k, $('#' + id).value.trim());
     store.set('includeIssues', $('#sIssues').checked);
+    store.set('localAi', $('#sLocalAi').checked);
     closeSheet(); renderAiNote(); toast('Settings saved');
   }
   const aiOn = () => !!(store.get('openaiKey', '') || health.openai);
@@ -183,6 +185,7 @@
     if (p === 'hotspots') { renderHotspots(); hydrate($('#page-hotspots')); }
     if (p === 'security') renderSecurity(); if (p === 'people') renderPeople(); if (p === 'timeline') renderTimeline(); if (p === 'report') renderReport();
     window.NarcIncidents?.render(p);
+    window.NarcPrivacy?.render(p);
     $('.content').scrollTop = 0;
   }
   function renderCrumb() {
@@ -212,7 +215,7 @@
     const st = settings();
     const payload = {
       repoUrl: `https://github.com/${repo}`, openaiKey: st.openaiKey, model: st.model, fastModel: st.fastModel, tavilyKey: st.tavilyKey, exaKey: st.exaKey, openaiBaseUrl: st.openaiBaseUrl, githubToken: st.githubToken, maxPRs: +st.maxPRs || 12,
-      includeIssues: store.get('includeIssues', true), docText: st.docText, docName: store.get('docName', '') || 'Design doc',
+      includeIssues: store.get('includeIssues', true), localAi: store.get('localAi', false), docText: st.docText, docName: store.get('docName', '') || 'Design doc',
       jira: { site: st.jiraSite, email: st.jiraEmail, token: st.jiraToken, jql: st.jiraJql },
     };
     showAnalyzing(repo);
@@ -329,6 +332,7 @@
     (data.security?.threats?.scenarios || []).forEach((sc) => sc.techniques?.forEach((t) => !S.tech.has(t.id) && S.tech.set(t.id, t)));
     renderOverview(); renderSecurity(); renderPRs(); renderBacklog(); renderHotspots(); renderPeople(); renderTimeline(); renderReport();
     window.NarcIncidents?.render(S.page);
+    window.NarcPrivacy?.render(S.page);
     G.rendered = false;
     if (S.page === 'arch' && $('#app').dataset.view === 'dash') graphRender({ keepZoom: keep });
     setDay(S.day, { quiet: true });
@@ -340,6 +344,7 @@
     $('#navPrs').textContent = S.data.prs.length || '';
     $('#navBacklog').textContent = S.data.backlog.tasks.length || '';
     const sc = S.data.security; $('#navSec').innerHTML = sc ? `${bandDot(sc.score, 8)}` : '';
+    const pv = S.data.privacy; $('#navPriv').innerHTML = pv ? `<b style="color:${{ A: 'var(--good)', B: 'var(--good)', C: 'var(--warn)', D: 'var(--serious)', F: 'var(--crit)' }[pv.grade]}">${pv.grade}</b>` : '';
     $('#navPeople').textContent = S.data.people?.contributors?.length || '';
   }
   function renderSidebar() {
