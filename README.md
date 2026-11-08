@@ -32,6 +32,9 @@ Click **Demo** for a full AI-mode sample, or paste a repo URL. Add your OpenAI k
 * **Architecture** — clickable layer graph. Fill and border colour = debt; pink halo = PR debt waiting to land; red dashed edges = layering violations. Click a layer to highlight what it depends on (cyan) and what depends on it (orange). Double-click to open its module graph. Drag the **timeline** (or ▶) to watch the 90-day forecast. You can colour by total, PR or inherited debt.
 * **Inspector** — score gauge, debt breakdown, stacked forecast chart with an "all PRs merged today" line, dependency chains with inherited points, blast radius, score drivers, PR debt items, backlog items, hotspots, modules, AI deep dive.
 * **Pull requests**, **Backlog forecast**, **Hotspots**, **Report** (exportable JSON).
+* **Investigations** — live from GitHub for the analyzed repo. Every CI break on the default branch (a workflow that passed, then failed) and every open PR whose CI fails becomes a case. Narc scores three suspects with clues that link to the real evidence: **bad change** (the commits between the last green and first red run, or the PR's diff; whether the error annotation or job log names a changed file), **vendor outage** (GitHub/npm/PyPI error signatures, the same commit passing on a re-run, unrelated pipelines failing together, and the vendor's own status-page incidents), **attack** (hidden instructions for AI agents, CI pipeline edits by outside contributors, `pull_request_target`, secrets sent to the network, packages missing from npm/PyPI or barely used). **Re-check** reads GitHub again. The built-in demo uses the Acme Cloud synthetic logs instead.
+* **MITRE map** — attack signs from the investigations plus this repo's security scan on one ATT&CK / ATLAS matrix (the demo also shows its attack chain before and after removing an AI agent's unused permissions).
+* **Blast radius** — for this repo: every layer that imports the one you pick, directly or through others. For each CI failure: the layers its change touched and every layer that depends on them, from the same import graph.
 
 ## Config (`.env` or Settings drawer)
 
@@ -60,5 +63,8 @@ lib/backlog.js       Jira / doc / CSV / issues → tasks, heuristics + LLM
 lib/forecast.js      time series + dependency propagation
 lib/pipeline.js      orchestration, exec summary, deep dive
 lib/demo.js          synthetic AI-mode dataset (same assemble() path)
+lib/investigate.js   live CI investigations: runs, jobs, annotations, logs, compare, status pages, registries
+data/incidents.json  demo-only incident investigations (Acme Cloud synthetic logs)
+scripts/export_incidents.py  regenerates it from the Python Narc engine
 public/              UI (vanilla JS + Cytoscape)
 ```

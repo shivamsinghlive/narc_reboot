@@ -182,6 +182,7 @@
     if (p === 'overview') { renderOverview(); hydrate($('#page-overview')); }
     if (p === 'hotspots') { renderHotspots(); hydrate($('#page-hotspots')); }
     if (p === 'security') renderSecurity(); if (p === 'people') renderPeople(); if (p === 'timeline') renderTimeline(); if (p === 'report') renderReport();
+    window.NarcIncidents?.render(p);
     $('.content').scrollTop = 0;
   }
   function renderCrumb() {
@@ -327,6 +328,7 @@
     (data.security?.mitre || []).forEach((t) => S.tech.set(t.id, t));
     (data.security?.threats?.scenarios || []).forEach((sc) => sc.techniques?.forEach((t) => !S.tech.has(t.id) && S.tech.set(t.id, t)));
     renderOverview(); renderSecurity(); renderPRs(); renderBacklog(); renderHotspots(); renderPeople(); renderTimeline(); renderReport();
+    window.NarcIncidents?.render(S.page);
     G.rendered = false;
     if (S.page === 'arch' && $('#app').dataset.view === 'dash') graphRender({ keepZoom: keep });
     setDay(S.day, { quiet: true });
@@ -1774,6 +1776,8 @@
   /* =====================================================================
      Boot
      ===================================================================== */
+  // Shared with public/incidents.js (Investigations, MITRE map, Blast radius tabs)
+  window.NarcUI = { S, $, $$, esc, icon, hydrate, plural, acc, bandColor, bandBadge, bandDot, lname, LAYER_ICON, setPage, toast };
   setTheme(store.get('theme', 'system'));
   $('#paletteBtn kbd').textContent = isMac ? '⌘K' : 'Ctrl K';
   hydrate();

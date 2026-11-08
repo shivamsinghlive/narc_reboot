@@ -90,6 +90,30 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, demoResult());
     }
 
+    // Live investigations of the analyzed repo's CI failures (lib/investigate.js). Cached per analysis; refresh re-reads GitHub.
+    if (url.pathname === '/api/investigate' && req.method === 'POST') {
+      const input = await body(req);
+      const job = jobs.get(input.jobId);
+      if (!job?.result) return send(res, 404, { error: 'Analysis not found (server restarted?). Re-run the analysis.' });
+      if (job.investigation && !input.refresh) return send(res, 200, job.investigation);
+      const token = input.githubToken || env.GITHUB_TOKEN;
+      const [{ makeGithub }, { investigateRepo }] = await Promise.all([import('./lib/github.js'), import('./lib/investigate.js')]);
+      const r = job.result.repo;
+      try {
+        job.investigating ||= investigateRepo({ gh: makeGithub(token), repo: { owner: r.owner, name: r.name, defaultBranch: r.defaultBranch, url: r.url }, ctx: job.private?.incidentCtx, token, refresh: !!input.refresh }).finally(() => { job.investigating = null; });
+        job.investigation = await job.investigating;
+      } catch (e) { return send(res, 502, { error: e.message || String(e), rateLimited: /rate limit/i.test(e.message) }); }
+      return send(res, 200, job.investigation);
+    }
+
+    // Demo-mode incident investigations, attack chains and blast radius (exported by scripts/export_incidents.py)
+    if (url.pathname === '/api/incidents') {
+      const file = path.join(ROOT, 'data', 'incidents.json');
+      if (!existsSync(file)) return send(res, 404, { error: 'data/incidents.json missing. Run scripts/export_incidents.py' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      return res.end(await readFile(file));
+    }
+
     if (url.pathname === '/api/deep-dive' && req.method === 'POST') {
       const input = await body(req);
       if (input.jobId === 'demo') { const { demoDeepDive } = await import('./lib/demo.js'); return send(res, 200, demoDeepDive(input.layerId)); }

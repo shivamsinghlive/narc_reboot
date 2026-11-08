@@ -89,6 +89,10 @@
           <button class="nav-item" data-page="arch" role="tab"><i data-icon="network"></i><span>Architecture</span><kbd>2</kbd></button>
           <button class="nav-item" data-page="security" role="tab"><i data-icon="shield"></i><span>Security</span><em class="nav-count" id="navSec"></em><kbd>3</kbd></button>
           <button class="nav-item" data-page="hotspots" role="tab"><i data-icon="flame"></i><span>Hotspots</span><kbd>4</kbd></button>
+          <div class="nav-group">Incidents</div>
+          <button class="nav-item" data-page="investigate" role="tab"><i data-icon="search"></i><span>Investigations</span><em class="nav-count" id="navInv"></em></button>
+          <button class="nav-item" data-page="mitre" role="tab"><i data-icon="target"></i><span>MITRE map</span></button>
+          <button class="nav-item" data-page="blast" role="tab"><i data-icon="radar"></i><span>Blast radius</span></button>
           <div class="nav-group">Change</div>
           <button class="nav-item" data-page="prs" role="tab"><i data-icon="pr"></i><span>Pull requests</span><em class="nav-count" id="navPrs"></em><kbd>5</kbd></button>
           <button class="nav-item" data-page="backlog" role="tab"><i data-icon="list"></i><span>Backlog</span><em class="nav-count" id="navBacklog"></em><kbd>6</kbd></button>
@@ -147,6 +151,9 @@
         <section class="page" id="page-people" data-page="people"></section>
         <section class="page" id="page-timeline" data-page="timeline"></section>
         <section class="page" id="page-report" data-page="report"></section>
+        <section class="page" id="page-investigate" data-page="investigate"></section>
+        <section class="page" id="page-mitre" data-page="mitre"></section>
+        <section class="page" id="page-blast" data-page="blast"></section>
       </div>
 
       <aside class="panel" id="panel" hidden aria-label="Details"></aside>
@@ -227,5 +234,6 @@
 
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <script src="app.js"></script>
+  <script src="incidents.js"></script>
 </body>
 </html>
