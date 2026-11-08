@@ -1114,3 +1114,51 @@ div.inc-raw pre { margin: 0; padding: 10px 12px; white-space: pre-wrap; word-bre
 .orwell { margin: 20px 0 0; padding: 0 0 0 14px; border-left: 3px solid #e25555; border-radius: 0; }
 .orwell span { display: block; font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 17px; color: var(--text); transition: opacity .4s; }
 .orwell cite { display: block; font-style: normal; font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* Sidebar: privacy-first sections + "More tools" */
+.nav-more { display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; margin-top: 10px; padding: 0 10px; border-radius: var(--r-sm); color: var(--muted); font-size: 12px; font-weight: 600; }
+.nav-more:hover { background: var(--surface-2); color: var(--text-2); }
+.nav-more svg { width: 13px; height: 13px; transition: transform .15s; transform: rotate(-90deg); }
+.nav-more[aria-expanded="true"] svg { transform: none; }
+.more-tools { border-left: 1px solid var(--line-2); margin-left: 14px; padding-left: 4px; }
+
+/* Privacy debt page */
+.pd-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.pd-tile { padding: 16px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); text-align: left; }
+.pd-tile .k { font-size: 12px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.pd-tile .k svg { width: 14px; height: 14px; }
+.pd-tile .v { font-size: 30px; font-weight: 800; letter-spacing: -.03em; margin-top: 6px; line-height: 1.1; }
+.pd-tile .s { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.pd-rows { padding: 6px 8px 10px; }
+.pd-row { display: grid; grid-template-columns: 190px 1fr 46px 1.3fr 64px; gap: 14px; align-items: center; width: 100%; padding: 11px 10px; border-radius: var(--r); text-align: left; }
+.pd-row:hover { background: var(--surface-2); }
+.pd-row .ln { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+.pd-row .ln svg { width: 15px; height: 15px; color: var(--muted); }
+.pd-bar { height: 12px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.pd-bar i { display: block; height: 100%; border-radius: 6px; transition: width .8s cubic-bezier(.2,.9,.3,1); }
+.pd-row .sc { font-family: var(--mono); font-weight: 700; font-size: 14px; text-align: right; }
+.pd-row .what { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; min-width: 0; }
+.pd-row .what .pv-ic { height: 24px; min-width: 24px; padding: 0 5px; border-radius: 7px; }
+.pd-row .what .pv-av { margin-right: -5px; }
+.pd-row .br { font-size: 11.5px; color: var(--muted); text-align: right; }
+.pd-row .br b { display: block; font-size: 14px; color: var(--text); }
+.pd-row.clean { opacity: .55; }
+.pd-fix { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); }
+.pd-fix .n { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font-weight: 800; font-size: 13px; }
+.pd-fix .t { font-weight: 600; font-size: 13px; }
+.pd-fix .d { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.pd-fix .c { font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; }
+@media (max-width: 1000px) { .pd-tiles { grid-template-columns: repeat(2, 1fr); } .pd-row { grid-template-columns: 140px 1fr 40px; } .pd-row .what, .pd-row .br { display: none; } }
+
+/* Architecture in privacy-debt mode: leaking layers glow, user data visibly flows into them */
+.g-node.leak .halo { stroke: var(--crit); stroke-width: 9; stroke-opacity: .32; animation: pvleak 1.6s ease-in-out infinite; }
+@keyframes pvleak { 0%, 100% { stroke-opacity: .14; stroke-width: 6; } 50% { stroke-opacity: .45; stroke-width: 12; } }
+.g-node.leak .card { stroke: var(--crit); stroke-width: 1.5; }
+.g-edge.pv-flow { stroke: color-mix(in srgb, var(--serious) 55%, var(--edge)); stroke-dasharray: 2 9; stroke-linecap: round; animation: pvdash .9s linear infinite; }
+.g-edge.pv-hot { stroke: var(--crit); }
+@keyframes pvdash { to { stroke-dashoffset: -22; } }
+.g-node .badge.pv rect { fill: var(--accent-soft); } .g-node .badge.pv text { fill: var(--accent); }
+.legend .ln.pv { background: repeating-linear-gradient(90deg, var(--crit) 0 3px, transparent 3px 8px) !important; height: 3px !important; }
+.legend .halo.leak { border-color: var(--crit) !important; box-shadow: 0 0 0 3px var(--crit-soft); }
+@media (prefers-reduced-motion: reduce) { .g-node.leak .halo, .g-edge.pv-flow { animation: none; } }
+.p-tabs { overflow-x: auto; scrollbar-width: none; } .p-tabs button { white-space: nowrap; flex: none; }

@@ -9,7 +9,7 @@
   'use strict';
   const U = window.NarcUI;
   if (!U) return;
-  const { S, $, esc, icon, plural } = U;
+  const { S, $, esc, icon, plural, bandColor, lname, LAYER_ICON } = U;
 
   const P = { research: {}, pending: new Set(), egress: null, egressFor: null, sel: null, kind: 'all' };
   const CAT_COLOR = { ads: 'var(--crit)', replay: 'var(--crit)', enrichment: 'var(--crit)', analytics: 'var(--serious)', marketing: 'var(--warn)', ai: 'var(--accent)', errors: 'var(--up)', messaging: 'var(--up)', payments: 'var(--good)', search: 'var(--up)' };
@@ -205,7 +205,47 @@
     </div>`;
     el.scrollTop = y;
   }
+  /** Privacy debt: the same 0–100 debt scale as tech debt, per part of the app, with the fixes that pay most of it down. */
+  function paintDebt() {
+    if (S.page !== 'pdebt') return;
+    const el = $('#page-pdebt'), p = pv();
+    if (!p) { el.innerHTML = `<div class="wrap"><div class="page-head"><div><h1>Privacy debt</h1></div></div><div class="card"><div class="empty"><b>No privacy report for this analysis</b>Analyze a repo to see where it leaks user data.</div></div></div>`; return; }
+    const layers = [...S.data.layers].filter((l) => l.privacy).sort((a, b) => b.privacy.score - a.privacy.score);
+    const leaking = layers.filter((l) => l.privacy.score > 0), worst = leaking[0], total = layers.reduce((n, l) => n + l.privacy.score, 0);
+    const prItems = p.prChanges.reduce((n, c) => n + c.items.length, 0);
+    const recOf = (id) => p.recipients.find((r) => r.id === id);
+    // Group the flows by what you'd do about them, so the list reads as a to-do, biggest payoff first
+    const groups = {}; for (const f of p.flows) { const k = f.rule + '|' + (f.recipient || f.kind); (groups[k] ||= { f, n: 0, pts: 0, layers: new Set() }); groups[k].n++; groups[k].pts += [0, 2, 4, 8, 14, 20][f.severity] || 0; if (f.layer) groups[k].layers.add(f.layer); }
+    const fixes = Object.values(groups).sort((a, b) => b.pts - a.pts).slice(0, 6);
+    const tile = (ic, k, v, s, c) => `<div class="pd-tile"><div class="k">${icon(ic)} ${k}</div><div class="v" style="${c ? `color:${c}` : ''}">${v}</div><div class="s">${s}</div></div>`;
+    el.innerHTML = `<div class="wrap pv">
+      <div class="page-head"><div><h1>Privacy debt</h1><p>Like tech debt, but for your users' data: every part of the app scored 0–100 for how much personal data it leaks, and the fixes that pay it down.</p></div>
+        <div class="actions"><button class="btn" data-go-arch>${icon('network')} See it on the architecture</button></div></div>
+      <div class="pd-tiles">
+        ${tile('radar', 'Privacy grade', `${p.grade}`, `${p.score}/100 · ${esc(p.verdict)}`, GRADE_COLOR[p.grade])}
+        ${tile('layers', 'Leaking parts', `${leaking.length}<span style="font-size:16px;color:var(--muted)">/${layers.length}</span>`, 'layers send user data out')}
+        ${tile('flame', 'Worst part', worst ? esc(worst.name.split(' /')[0]) : 'None', worst ? `${worst.privacy.score} privacy debt` : 'nothing leaks', worst ? bandColor(worst.privacy.score) : 'var(--good)')}
+        ${tile('pr', 'Coming in PRs', prItems, prItems ? 'changes would add debt' : 'no open PR adds debt', prItems ? 'var(--crit)' : 'var(--good)')}
+      </div>
+      <div class="card"><div class="card-h"><h3>Privacy debt by part of the app</h3><span class="sub">0–100, higher is worse · click one to open it on the architecture</span></div>
+        <div class="pd-rows">${layers.map((l) => { const x = l.privacy, recs = x.recipients.map(recOf).filter(Boolean);
+          return `<button class="pd-row ${x.score ? '' : 'clean'}" data-goto-layer="${l.id}" data-ptab-next="priv"><span class="ln">${icon(LAYER_ICON[l.id])}${esc(l.name)}</span>
+            <span class="pd-bar"><i style="width:${Math.max(x.score ? 3 : 0, x.score)}%;background:${bandColor(x.score)}"></i></span><span class="sc" style="color:${x.score ? bandColor(x.score) : 'var(--muted)'}">${x.score}</span>
+            <span class="what">${x.pii.slice(0, 4).map((k) => `<span class="pv-ic" title="${esc(PII_LABEL[k] || k)}">${glyph(k, 14)}</span>`).join('')}${recs.length ? `<span style="display:inline-flex;margin-left:6px">${recs.slice(0, 5).map((r) => avatar(r, 24)).join('')}</span>` : ''}${!x.pii.length && !recs.length ? '<span class="muted" style="font-size:12px">No user data leaves here</span>' : ''}</span>
+            <span class="br"><b>${l.dependents.length}</b>blast radius</span></button>`; }).join('')}</div></div>
+      <div class="card"><div class="card-h"><h3>Fixes that pay down the most debt</h3><span class="sub">grouped from ${plural(p.flows.length, 'data flow')}</span></div>
+        ${fixes.length ? fixes.map((g, i) => { const r = g.f.recipient && recOf(g.f.recipient);
+          return `<div class="pd-fix"><span class="n" style="background:color-mix(in srgb, ${sevColorRaw(g.f.severity)} 15%, transparent);color:${sevColorRaw(g.f.severity)}">${i + 1}</span>
+            <div><div class="t">${esc(g.f.title)}${g.n > 1 ? ` <span class="muted" style="font-weight:400">· ${g.n} places</span>` : ''}</div><div class="d">${esc(g.f.fix)}</div></div>
+            <div class="c">${[...g.layers].map((id) => esc(lname(id).split(' /')[0])).join(', ')}${r ? `<br>${esc(r.name)}` : ''}</div></div>`; }).join('')
+          : `<div class="pv-ok-big">${icon('check')}<b>No privacy debt</b><span>Nothing in this app sends personal data where it shouldn't.</span></div>`}</div>
+    </div>`;
+    const n = $('#navPdebt'); if (n) n.textContent = leaking.length || '';
+  }
+  const sevColorRaw = (s) => (s >= 5 ? 'var(--crit)' : s >= 4 ? 'var(--serious)' : s >= 3 ? 'var(--warn)' : 'var(--muted)');
+
   function render(page) {
+    if (page === 'pdebt') { paintDebt(); return; }
     if (page !== 'privacy') return;
     const p = pv();
     // Research every company up front (cached for a week) so verdicts are on the map, not behind a click.
@@ -215,6 +255,7 @@
   }
 
   document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-go-arch]')) { U.setPage('arch'); return; }
     const t = e.target.closest('[data-pv-rec],[data-pv-close],[data-pv-research],[data-pv-kind],[data-pv-go]');
     if (!t || S.page !== 'privacy') return;
     const d = t.dataset;

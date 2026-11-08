@@ -99,24 +99,25 @@
     <div class="dash" id="dash" hidden>
       <nav class="sidebar" id="sidebar" aria-label="Sections">
         <div class="nav" role="tablist">
-          <button class="nav-item" data-page="overview" role="tab"><i data-icon="grid"></i><span>Overview</span><kbd>1</kbd></button>
-          <button class="nav-item nav-pv" data-page="privacy" role="tab"><i data-icon="radar"></i><span>Privacy</span><em class="nav-count" id="navPriv"></em></button>
-          <div class="nav-group">Analyze</div>
-          <button class="nav-item" data-page="arch" role="tab"><i data-icon="network"></i><span>Architecture</span><kbd>2</kbd></button>
-          <button class="nav-item" data-page="security" role="tab"><i data-icon="shield"></i><span>Security</span><em class="nav-count" id="navSec"></em><kbd>3</kbd></button>
-          <button class="nav-item" data-page="hotspots" role="tab"><i data-icon="flame"></i><span>Hotspots</span><kbd>4</kbd></button>
-          <div class="nav-group">Incidents</div>
-          <button class="nav-item" data-page="investigate" role="tab"><i data-icon="search"></i><span>Investigations</span><em class="nav-count" id="navInv"></em></button>
-          <button class="nav-item" data-page="mitre" role="tab"><i data-icon="target"></i><span>MITRE map</span></button>
-          <button class="nav-item" data-page="blast" role="tab"><i data-icon="radar"></i><span>Blast radius</span></button>
-          <div class="nav-group">Change</div>
-          <button class="nav-item" data-page="prs" role="tab"><i data-icon="pr"></i><span>Pull requests</span><em class="nav-count" id="navPrs"></em><kbd>5</kbd></button>
-          <button class="nav-item" data-page="backlog" role="tab"><i data-icon="list"></i><span>Backlog</span><em class="nav-count" id="navBacklog"></em><kbd>6</kbd></button>
-          <div class="nav-group">Context</div>
-          <button class="nav-item" data-page="people" role="tab"><i data-icon="users"></i><span>People</span><em class="nav-count" id="navPeople"></em><kbd>7</kbd></button>
-          <button class="nav-item" data-page="timeline" role="tab"><i data-icon="clock"></i><span>Timeline</span><kbd>8</kbd></button>
-          <div class="nav-group">Output</div>
-          <button class="nav-item" data-page="report" role="tab"><i data-icon="file"></i><span>Report & agents</span><kbd>9</kbd></button>
+          <div class="nav-group">Privacy</div>
+          <button class="nav-item nav-pv" data-page="privacy" role="tab"><i data-icon="radar"></i><span>Privacy</span><em class="nav-count" id="navPriv"></em><kbd>1</kbd></button>
+          <button class="nav-item" data-page="pdebt" role="tab"><i data-icon="layers"></i><span>Privacy debt</span><em class="nav-count" id="navPdebt"></em><kbd>2</kbd></button>
+          <button class="nav-item" data-page="arch" role="tab"><i data-icon="network"></i><span>Architecture</span><kbd>3</kbd></button>
+          <div class="nav-group">Code health</div>
+          <button class="nav-item" data-page="security" role="tab"><i data-icon="shield"></i><span>Security</span><em class="nav-count" id="navSec"></em><kbd>4</kbd></button>
+          <button class="nav-item" data-page="hotspots" role="tab"><i data-icon="flame"></i><span>Hotspots</span><kbd>5</kbd></button>
+          <button class="nav-more" id="moreToggle" aria-expanded="false" aria-controls="moreTools"><i data-icon="chevron"></i><span>More tools</span></button>
+          <div class="more-tools" id="moreTools" hidden>
+            <button class="nav-item" data-page="overview" role="tab"><i data-icon="grid"></i><span>Tech-debt overview</span></button>
+            <button class="nav-item" data-page="investigate" role="tab"><i data-icon="search"></i><span>Investigations</span><em class="nav-count" id="navInv"></em></button>
+            <button class="nav-item" data-page="mitre" role="tab"><i data-icon="target"></i><span>MITRE map</span></button>
+            <button class="nav-item" data-page="blast" role="tab"><i data-icon="radar"></i><span>Blast radius</span></button>
+            <button class="nav-item" data-page="prs" role="tab"><i data-icon="pr"></i><span>Pull requests</span><em class="nav-count" id="navPrs"></em></button>
+            <button class="nav-item" data-page="backlog" role="tab"><i data-icon="list"></i><span>Backlog</span><em class="nav-count" id="navBacklog"></em></button>
+            <button class="nav-item" data-page="people" role="tab"><i data-icon="users"></i><span>People</span><em class="nav-count" id="navPeople"></em></button>
+            <button class="nav-item" data-page="timeline" role="tab"><i data-icon="clock"></i><span>Timeline</span></button>
+            <button class="nav-item" data-page="report" role="tab"><i data-icon="file"></i><span>Report & agents</span></button>
+          </div>
         </div>
         <div class="side-section">
           <div class="side-title">Layers <span class="muted" id="sideDay">today</span></div>
@@ -134,7 +135,8 @@
               <div class="crumbs" id="graphCrumbs"></div>
               <div class="toolbar-float">
                 <div class="seg" role="radiogroup" aria-label="Color by">
-                  <button data-color="total" class="on" role="radio" aria-checked="true">Total debt</button>
+                  <button data-color="privacy" role="radio" aria-checked="false">Privacy</button>
+                  <button data-color="total" class="on" role="radio" aria-checked="true">Tech debt</button>
                   <button data-color="pending" role="radio" aria-checked="false">PR debt</button>
                   <button data-color="inherited" role="radio" aria-checked="false">Inherited</button>
                   <button data-color="security" role="radio" aria-checked="false">Security</button>
@@ -162,6 +164,7 @@
         </section>
         <section class="page" id="page-security" data-page="security"></section>
         <section class="page" id="page-privacy" data-page="privacy"></section>
+        <section class="page" id="page-pdebt" data-page="pdebt"></section>
         <section class="page" id="page-prs" data-page="prs"></section>
         <section class="page" id="page-backlog" data-page="backlog"></section>
         <section class="page" id="page-hotspots" data-page="hotspots"></section>
