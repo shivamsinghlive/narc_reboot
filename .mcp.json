@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "narc": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["mcp.js"]
+    }
+  }
+}

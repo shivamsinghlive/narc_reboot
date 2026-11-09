@@ -100,10 +100,40 @@ JIRA_SITE= JIRA_EMAIL= JIRA_TOKEN= JIRA_JQL=
 
 Keys typed into Settings stay in your browser's localStorage. They're sent only to this local server, which forwards them to OpenAI, GitHub or Jira.
 
+## Use Narc as an MCP server
+
+`mcp.js` exposes Narc to Claude Code, Claude Desktop or any MCP client, so an agent can ask "where does this app send its users' data?" while it works. Same analysis as the web app, zero dependencies, reads the same `.env`.
+
+**Claude Code:** this repo ships a `.mcp.json`, so opening Claude Code in this folder offers to enable `narc` (approve it once). From anywhere else:
+
+```bash
+claude mcp add narc -- node /absolute/path/to/narc_reboot/mcp.js
+```
+
+**Claude Desktop:** add to `claude_desktop_config.json` and restart:
+
+```json
+{ "mcpServers": { "narc": { "command": "node", "args": ["C:/absolute/path/to/narc_reboot/mcp.js"] } } }
+```
+
+| Tool | What it returns |
+|---|---|
+| `scan_repo` | Privacy grade, every recipient of user data, riskiest flows with file:line links, security exposure, CVE count, tech-debt index. 10-60 s first time, then cached 30 min. |
+| `privacy_report` | Every recipient and personal-data flow with who can read it and how to fix it, the personal-data inventory, and open PRs that add trackers or flows. |
+| `security_report` | Static findings (CWE + MITRE), known CVEs (OSV.dev), unauthenticated endpoints, threat scenarios. Optional `min_severity`. |
+| `pr_risks` | Open PRs ranked by debt risk, with merge advice and privacy changes. |
+| `check_code` | Checks a snippet or file for privacy flows and security issues **entirely offline**. Nothing leaves the machine. |
+| `research_recipient` | Tavily/Exa dossier on a company: sells data, ads, AI training, retention, with sources. |
+
+Try: *"Use narc to scan midday-ai/midday and tell me which companies receive bank data"* or *"Run narc check_code on the file I just changed before I commit."*
+
+Set `GITHUB_TOKEN` in `.env` for anything beyond a couple of scans an hour (each scan uses about 12 GitHub requests). With `NARC_LOCAL_AI=1`, AI steps run on Ollama as in the web app. `npm run mcp` starts it by hand (it waits for MCP messages on stdin; logs go to stderr).
+
 ## Layout
 
 ```
 server.js            HTTP + SSE job stream, static files
+mcp.js               MCP server (stdio): scan_repo, privacy_report, security_report, pr_risks, check_code, research_recipient
 lib/github.js        repo meta, tarball, PRs, diffs, issues
 lib/ingest.js        tar.gz reader + file filtering
 lib/deps.js          import extraction + multi-language resolver
