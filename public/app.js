@@ -146,6 +146,8 @@
   function fillSettings() {
     for (const [id, k] of Object.entries(FIELDS)) $('#' + id).value = store.get(k, id === 'sMaxPRs' ? 12 : '');
     $('#sIssues').checked = store.get('includeIssues', true);
+    // Until the user chooses, show (and use) the server's NARC_LOCAL_AI default
+    $('#sLocalAi').checked = store.get('localAi', !!health.localAi);
     $('#sDocName').textContent = store.get('docName', '');
     $$('#themeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.themeOpt === store.get('theme', 'system')));
   }
@@ -154,6 +156,7 @@
   function saveSheet() {
     for (const [id, k] of Object.entries(FIELDS)) store.set(k, $('#' + id).value.trim());
     store.set('includeIssues', $('#sIssues').checked);
+    store.set('localAi', $('#sLocalAi').checked);
     closeSheet(); renderAiNote(); toast('Settings saved');
   }
   const aiOn = () => !!(store.get('openaiKey', '') || health.openai);
@@ -182,7 +185,11 @@
     if (p === 'overview') { renderOverview(); hydrate($('#page-overview')); }
     if (p === 'hotspots') { renderHotspots(); hydrate($('#page-hotspots')); }
     if (p === 'security') renderSecurity(); if (p === 'people') renderPeople(); if (p === 'timeline') renderTimeline(); if (p === 'report') renderReport();
+    window.NarcIncidents?.render(p);
+    window.NarcPrivacy?.render(p);
     $('.content').scrollTop = 0;
+    if (!$('#moreTools').hidden || !$('#moreTools').contains($(`.nav-item[data-page="${p}"]`))) return;
+    $('#moreTools').hidden = false; $('#moreToggle').setAttribute('aria-expanded', 'true');
   }
   function renderCrumb() {
     const d = S.data, el = $('#topCrumb');
@@ -211,7 +218,7 @@
     const st = settings();
     const payload = {
       repoUrl: `https://github.com/${repo}`, openaiKey: st.openaiKey, model: st.model, fastModel: st.fastModel, tavilyKey: st.tavilyKey, exaKey: st.exaKey, openaiBaseUrl: st.openaiBaseUrl, githubToken: st.githubToken, maxPRs: +st.maxPRs || 12,
-      includeIssues: store.get('includeIssues', true), docText: st.docText, docName: store.get('docName', '') || 'Design doc',
+      includeIssues: store.get('includeIssues', true), localAi: store.get('localAi', null), docText: st.docText, docName: store.get('docName', '') || 'Design doc',
       jira: { site: st.jiraSite, email: st.jiraEmail, token: st.jiraToken, jql: st.jiraJql },
     };
     showAnalyzing(repo);
@@ -242,7 +249,7 @@
       else if (ev.type === 'partial') {
         const first = !gotData; gotData = true;
         load(ev.result, { keep: !first });
-        if (first) { setView('dash'); setPage('overview'); }
+        if (first) { setView('dash'); setPage(ev.result.privacy ? 'privacy' : 'overview'); }
         S.statusP = ev.phase === 'static' ? 0.15 : 0.85;
         setStatus({ text: liveStatusText() || (ev.phase === 'static' ? 'AI agents working' : 'AI writing summary'), p: S.statusP });
         if (!first) toast('AI reviews are in. PR and backlog debt updated.');
@@ -250,7 +257,7 @@
         es.close(); S.live = false;
         const first = !gotData;
         load(ev.result, { keep: !first });
-        if (first) { setView('dash'); setPage('overview'); }
+        if (first) { setView('dash'); setPage(ev.result.privacy ? 'privacy' : 'overview'); }
         setStatus(null); saveRecent(ev.result); renderSidebar();
         if (!first) toast(ev.result.mode === 'ai' ? 'AI analysis complete' : 'Analysis complete');
       } else if (ev.type === 'error') {
@@ -317,7 +324,7 @@
   function load(data, { keep = false } = {}) {
     const prev = S.data;
     S.data = data;
-    if (!keep || !prev) { S.sel = null; S.day = 0; S.drill = null; S.deep = {}; G.userZoomed = false; }
+    if (!keep || !prev) { S.sel = null; S.day = 0; S.drill = null; S.deep = {}; G.userZoomed = false; S.colorBy = data.privacy ? 'privacy' : S.colorBy === 'privacy' ? 'total' : S.colorBy; $$('.toolbar-float [data-color="total"],.toolbar-float [data-color="pending"],.toolbar-float [data-color="inherited"]').forEach((x) => (x.hidden = !!data.privacy)); if (!data.privacy) $('#timeline').hidden = false; $$('.toolbar-float [data-color]').forEach((x) => { x.classList.toggle('on', x.dataset.color === S.colorBy); x.setAttribute('aria-checked', x.dataset.color === S.colorBy); }); }
     else if (S.sel?.type === 'layer' && !L(S.sel.id)) S.sel = null;
     if (S.drill && !L(S.drill)) S.drill = null;
     $('#daySlider').max = lastK();
@@ -327,6 +334,8 @@
     (data.security?.mitre || []).forEach((t) => S.tech.set(t.id, t));
     (data.security?.threats?.scenarios || []).forEach((sc) => sc.techniques?.forEach((t) => !S.tech.has(t.id) && S.tech.set(t.id, t)));
     renderOverview(); renderSecurity(); renderPRs(); renderBacklog(); renderHotspots(); renderPeople(); renderTimeline(); renderReport();
+    window.NarcIncidents?.render(S.page);
+    window.NarcPrivacy?.render(S.page);
     G.rendered = false;
     if (S.page === 'arch' && $('#app').dataset.view === 'dash') graphRender({ keepZoom: keep });
     setDay(S.day, { quiet: true });
@@ -338,13 +347,15 @@
     $('#navPrs').textContent = S.data.prs.length || '';
     $('#navBacklog').textContent = S.data.backlog.tasks.length || '';
     const sc = S.data.security; $('#navSec').innerHTML = sc ? `${bandDot(sc.score, 8)}` : '';
+    const pv = S.data.privacy; $('#navPriv').innerHTML = pv ? `<b style="color:${{ A: 'var(--good)', B: 'var(--good)', C: 'var(--warn)', D: 'var(--serious)', F: 'var(--crit)' }[pv.grade]}">${pv.grade}</b>` : '';
     $('#navPeople').textContent = S.data.people?.contributors?.length || '';
   }
   function renderSidebar() {
     const d = S.data; if (!d) return; const k = S.day;
-    const ls = [...d.layers].sort((a, b) => b.series[k].total - a.series[k].total);
-    $('#sideDay').textContent = k ? `+${d.days[k]}d` : 'today';
-    $('#sideLayers').innerHTML = ls.map((l) => `<button class="side-layer ${S.sel?.type === 'layer' && S.sel.id === l.id ? 'on' : ''}" data-goto-layer="${l.id}" title="${esc(l.name)}: ${band(l.series[k].total).label}">${icon(LAYER_ICON[l.id])}<span class="nm">${esc(l.name)}</span><span style="display:flex;align-items:center;gap:6px">${bandDot(l.series[k].total)}<span class="score">${l.series[k].total}</span></span></button>`).join('');
+    const pvOf = (l) => (d.privacy ? l.privacy?.score ?? 0 : l.series[k].total);
+    const ls = [...d.layers].sort((a, b) => pvOf(b) - pvOf(a));
+    $('#sideDay').textContent = d.privacy ? 'privacy debt' : k ? `+${d.days[k]}d` : 'today';
+    $('#sideLayers').innerHTML = ls.map((l) => `<button class="side-layer ${S.sel?.type === 'layer' && S.sel.id === l.id ? 'on' : ''}" data-goto-layer="${l.id}" title="${esc(l.name)}: ${band(pvOf(l)).label}">${icon(LAYER_ICON[l.id])}<span class="nm">${esc(l.name)}</span><span style="display:flex;align-items:center;gap:6px">${bandDot(pvOf(l))}<span class="score">${pvOf(l)}</span></span></button>`).join('');
     const s = d.stats || {};
     $('#sideFoot').innerHTML = `${d.mode === 'ai' ? esc(d.model) : 'Static analysis'}${S.live ? ' · <span style="color:var(--accent)">AI running…</span>' : ''}<br>${fmt(s.analysedFiles)} files${s.seconds != null ? ` · ${s.seconds}s` : ''}${d.usage?.cached ? ` · ${d.usage.cached} cached` : ''}`;
   }
@@ -387,6 +398,7 @@
     if (S.colorBy === 'pending') return { v: Math.min(100, s.pending * 2.5), text: `+${Math.round(s.pending)}`, sub: 'from PRs' };
     if (S.colorBy === 'inherited') return { v: Math.min(100, s.inherited * 4), text: `+${Math.round(s.inherited)}`, sub: 'inherited' };
     if (S.colorBy === 'security') { const v = l.security?.score ?? 0; return { v, text: String(v), sub: `${l.security?.findings || 0} findings · ${l.security?.vulns || 0} CVEs` }; }
+    if (S.colorBy === 'privacy') { const p = l.privacy || { score: 0, flows: 0, recipients: [] }; return { v: p.score, text: String(p.score), sub: p.flows ? plural(p.flows, 'leak') : p.recipients.length ? plural(p.recipients.length, 'company', 'companies') : 'no leaks' }; }
     return { v: s.total, text: String(s.total), sub: '' };
   }
 
@@ -542,14 +554,20 @@
         if (secN) badges.push({ cls: 'crit', text: `${secN} high sec` });
         if (l.violations) badges.push({ cls: 'crit', text: `${l.violations} violation${l.violations > 1 ? 's' : ''}` });
         if (l.filesInCycles) badges.push({ cls: '', text: `${l.filesInCycles} in cycles` });
-        let bx = W - 12;
-        badges.slice(0, 2).forEach((b) => {
-          const tw = b.text.length * 5.9 + 12; bx -= tw;
-          const bb = g.append('g').attr('class', `badge ${b.cls}`).attr('transform', `translate(${bx},${H - 33})`);
-          bb.append('rect').attr('width', tw).attr('height', 17).attr('rx', 8.5);
-          bb.append('text').attr('x', tw / 2).attr('y', 12).attr('text-anchor', 'middle').text(b.text);
-          bx -= 5;
-        });
+        // Privacy view: who gets data from this layer, and what kind
+        const lp = l.privacy, pvBadges = [];
+        const PIIS = { email: 'email', phone: 'phone', name: 'name', address: 'address', location: 'location', ip: 'IP', dob: 'birth date', gov: 'gov ID', card: 'card', health: 'health', password: 'password', gender: 'gender', typed: 'typing' };
+        if (lp?.recipients.length) pvBadges.push({ cls: lp.critical ? 'crit' : 'pv', text: plural(lp.recipients.length, 'company', 'companies') });
+        if (lp?.pii.length) pvBadges.push({ cls: 'crit', text: lp.pii.slice(0, 2).map((k) => PIIS[k] || k).join(' · ') });
+        const drawBadges = (list, cls) => { let bx = W - 12;
+          list.slice(0, 2).forEach((b) => {
+            const tw = b.text.length * 5.9 + 12; bx -= tw;
+            const bb = g.append('g').attr('class', `badge ${b.cls} ${cls}`).attr('transform', `translate(${bx},${H - 33})`);
+            bb.append('rect').attr('width', tw).attr('height', 17).attr('rx', 8.5);
+            bb.append('text').attr('x', tw / 2).attr('y', 12).attr('text-anchor', 'middle').text(b.text);
+            bx -= 5;
+          }); };
+        drawBadges(badges, 'b-tech'); drawBadges(pvBadges, 'b-priv');
         g.append('g').attr('class', 'comp').attr('transform', `translate(16,${H - 9})`);
       })
       .on('mouseenter', (ev, l) => { G.hover = l.id; nodeTip(ev, l); G.highlight(); })
@@ -570,14 +588,22 @@
         g.select('.delta-t').text(dtext).attr('style', `fill:${S.colorBy !== 'total' || !dd ? 'var(--muted)' : dd > 0 ? 'var(--crit)' : 'var(--good)'}`);
         g.select('.bshape').attr('style', `fill:var(${b.v})`).html(b.shape);
         g.select('.band-t').text(b.label);
+        const pv = S.colorBy === 'privacy';
+        g.selectAll('.b-tech').attr('display', pv ? 'none' : null); g.selectAll('.b-priv').attr('display', pv ? null : 'none');
+        g.classed('leak', pv && (l.privacy?.score || 0) >= 40);
         const pend = Math.max(s.pending, (l.whatIfAllMerged - l.staticScore) * 0.6);
-        g.select('.halo').attr('display', pend > 3 ? null : 'none');
+        g.select('.halo').attr('display', pv ? ((l.privacy?.score || 0) >= 40 ? null : 'none') : pend > 3 ? null : 'none');
         const comp = g.select('.comp'); comp.selectAll('*').remove();
+        if (pv) { const bw = W - 32; comp.append('rect').attr('width', bw).attr('height', 3).attr('rx', 1.5).attr('style', 'fill:var(--surface-3)'); comp.append('rect').attr('width', bw * (l.privacy?.score || 0) / 100).attr('height', 3).attr('rx', 1.5).attr('style', `fill:var(${b.v})`); return; }
         const bw = W - 32; const parts = COMPONENTS.map((c) => ({ ...c, val: Math.max(0, s[c.key]) })).filter((c) => c.val > 0.3);
         const sum = Math.max(100, parts.reduce((a, c) => a + c.val, 0));
         comp.append('rect').attr('width', bw).attr('height', 3).attr('rx', 1.5).attr('style', 'fill:var(--surface-3)');
         let x = 0; parts.forEach((c) => { const w = (c.val / sum) * bw; comp.append('rect').attr('x', x).attr('width', Math.max(0, w - 1.5)).attr('height', 3).attr('rx', 1.5).attr('style', `fill:var(${c.v})`); x += w; });
       });
+      // User data flows along every import into a leaking layer: animate those wires
+      const pvOn = S.colorBy === 'privacy';
+      G.edgeSel.select('.g-edge').classed('pv-flow', (e) => pvOn && (L(e.target)?.privacy?.score || 0) > 0).classed('pv-hot', (e) => pvOn && (L(e.target)?.privacy?.score || 0) >= 40);
+      $('#timeline').hidden = pvOn;
       G.highlight();
     };
 
@@ -719,6 +745,7 @@
     const scLegend = S.sel?.type === 'scenario' ? `<span><i class="ln bad"></i>attack path: ${esc(sec()?.threats.scenarios.find((x) => x.id === S.sel.id)?.title || '')}</span>` : '';
     $('#legend').innerHTML = scLegend ? `${BANDS.map((b) => `<span>${bandDot(b.max - 5)}${b.label}</span>`).join('')}${scLegend}` : S.drill
       ? `<span>${bandDot(20)}${bandDot(40)}${bandDot(60)}${bandDot(80)} module debt</span><span>size = lines of code</span><span><i class="halo" style="border-radius:50%"></i>in open PRs</span><span class="muted">Click a module · click a pill to switch layer</span>`
+      : S.colorBy === 'privacy' ? `<b style="font-size:11.5px">Privacy debt</b>${BANDS.map((b) => `<span>${bandDot(b.max - 5)}${b.label}</span>`).join('')}<span><i class="ln pv"></i>user data flowing into a leak</span><span><i class="halo leak"></i>leaking layer</span>${S.sel?.type === 'layer' ? `<span><i class="ln up"></i>depends on</span><span><i class="ln down"></i>depended on by</span>` : `<span class="muted">Click a layer for its leaks</span>`}`
       : `${BANDS.map((b) => `<span>${bandDot(b.max - 5)}${b.label}</span>`).join('')}<span><i class="ln"></i>imports</span><span><i class="ln bad"></i>violation</span><span><i class="halo"></i>PR debt</span>${S.sel?.type === 'layer' ? `<span><i class="ln up"></i>depends on</span><span><i class="ln down"></i>depended on by</span>` : `<span class="muted">Click a layer · double-click for modules</span>`}`;
     $('#supportBtn').setAttribute('aria-pressed', S.support); $('#supportBtn').hidden = !!S.drill;
     $$('.toolbar-float .seg').forEach((el) => (el.hidden = !!S.drill));
@@ -744,6 +771,12 @@
   function hideTip() { $('#graphTip').hidden = true; }
   function nodeTip(ev, l) {
     const s = l.series[S.day];
+    if (S.colorBy === 'privacy' && l.privacy) {
+      const p = l.privacy, recs = (S.data.privacy?.recipients || []).filter((r) => p.recipients.includes(r.id));
+      return showTip(ev, `<h5>${icon(LAYER_ICON[l.id])}${esc(l.name)}</h5><div style="margin:4px 0 6px">${bandBadge(p.score, true)} <span class="muted">privacy debt</span></div>
+        <div class="row"><span>Data leaks</span><b>${p.flows}</b></div><div class="row"><span>Companies</span><b>${esc(recs.map((r) => r.name).join(', ') || 'none')}</b></div>
+        <div class="row"><span>Blast radius</span><b>${plural(l.dependents.length, 'layer')} call into it</b></div><div class="hint">Click for the exact lines</div>`);
+    }
     showTip(ev, `<h5>${icon(LAYER_ICON[l.id])}${esc(l.name)}</h5><div style="margin:4px 0 6px">${bandBadge(s.total, true)} <span class="muted">${dayLabel(S.day).toLowerCase()}</span></div>
       ${COMPONENTS.map((c) => `<div class="row"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:8px;height:8px;border-radius:2px;background:var(${c.v});display:inline-block"></i>${c.label}</span><b>${s[c.key] >= 0 ? '+' : '−'}${Math.abs(Math.round(s[c.key]))}</b></div>`).join('')}
       <div class="row"><span>Depends on</span><b>${l.dependsOn.length} direct · ${l.transitiveDeps} total</b></div><div class="row"><span>Blast radius</span><b>${plural(l.blastRadius, 'layer')}</b></div>
@@ -766,16 +799,17 @@
   function select(sel, { tab } = {}) {
     const same = sel && S.sel && sel.type === S.sel.type && sel.id === S.sel.id;
     S.sel = sel;
-    if (!same) S.panelTab = tab || 'summary'; else if (tab) S.panelTab = tab;
+    if (!same) S.panelTab = tab || (sel?.type === 'layer' ? defTab() : 'summary'); else if (tab) S.panelTab = tab;
     if (G.rendered) G.highlight?.();
     if (G.rendered && !S.drill) renderGraphChrome();
     renderSidebar(); renderPanel();
     $$('.row-item[data-pr]').forEach((r) => r.classList.toggle('on', sel?.type === 'pr' && +r.dataset.pr === sel.id));
   }
+  const defTab = () => (S.colorBy === 'privacy' && S.data?.privacy ? 'priv' : 'summary');
   function gotoLayer(id) {
     if (!L(id)) return;
     if (S.drill && S.drill !== id) { S.drill = null; G.rendered = false; }
-    S.sel = { type: 'layer', id }; S.panelTab = 'summary';
+    S.sel = { type: 'layer', id }; S.panelTab = defTab();
     if (S.page !== 'arch') setPage('arch'); else if (!G.rendered) graphRender();
     select({ type: 'layer', id });
   }
@@ -812,11 +846,32 @@
     if (!l) return '';
     const k = S.day, s = l.series[k], d = S.data;
     const lsec = l.security; const lf = sec()?.findings.filter((f) => f.layer === l.id) || []; const lv = sec()?.vulns.filter((v) => v.usedBy?.layers?.includes(l.id)) || []; const le = sec()?.surface.endpoints.filter((e) => e.layer === l.id) || [];
-    const tabs = [['summary', 'Summary'], ['deps', 'Dependencies', l.dependsOn.length + l.dependents.length], ['debt', 'Debt', l.prItems.length + l.tasks.length], ...(lsec ? [['sec', 'Security', lf.length + lv.length]] : []), ['code', 'Code', l.hotspots.length]];
-    if (!tabs.some((t) => t[0] === S.panelTab)) S.panelTab = 'summary';
-    const meta = `${bandBadge(s.total, true)}<span class="pill">${fmt(l.files)} files</span><span class="pill">${fmt(l.loc)} LOC</span>${l.coverage != null ? `<span class="pill ${l.coverage < 0.4 ? 'crit' : l.coverage > 0.7 ? 'good' : ''}">${Math.round(l.coverage * 100)}% test-linked</span>` : ''}`;
+    const lp = l.privacy;
+    // Everything that calls into this layer, directly or through others: where its leaks can be fed from
+    const blastAll = (() => { const seen = new Map(), q = l.dependents.map((x) => [x.layer, 1]); while (q.length) { const [id, dd] = q.shift(); if (seen.has(id) || id === l.id) continue; seen.set(id, dd); (L(id)?.dependents || []).forEach((x) => q.push([x.layer, dd + 1])); } return [...seen].map(([id, dd]) => ({ id, depth: dd })).sort((a, b) => a.depth - b.depth); })();
+    const tabs = [...(lp ? [['priv', 'Privacy debt', lp.flows || null], ['blast', 'Blast radius', blastAll.length]] : [['summary', 'Summary']]), ['deps', 'Dependencies', l.dependsOn.length + l.dependents.length], ...(lp ? [] : [['debt', 'Debt', l.prItems.length + l.tasks.length]]), ...(lsec ? [['sec', 'Security', lf.length + lv.length]] : []), ['code', 'Code', l.hotspots.length]];
+    if (!tabs.some((t) => t[0] === S.panelTab)) S.panelTab = tabs[0][0];
+    const meta = `${bandBadge(lp ? lp.score : s.total, true)}<span class="pill">${fmt(l.files)} files</span><span class="pill">${fmt(l.loc)} LOC</span>${l.coverage != null ? `<span class="pill ${l.coverage < 0.4 ? 'crit' : l.coverage > 0.7 ? 'good' : ''}">${Math.round(l.coverage * 100)}% test-linked</span>` : ''}`;
     let body = '';
-    if (S.panelTab === 'summary') {
+    if (S.panelTab === 'priv' && lp) {
+      const recs = (d.privacy?.recipients || []).filter((r) => lp.recipients.includes(r.id));
+      const ghl = (f) => `${d.repo.url}/blob/${d.repo.defaultBranch || 'HEAD'}/${f.file}${f.line ? `#L${f.line}` : ''}`;
+      const sevC = (v) => (v >= 5 ? 'var(--crit)' : v >= 4 ? 'var(--serious)' : v >= 3 ? 'var(--warn)' : 'var(--muted)');
+      const reach = [...new Set(l.dependents.map((x) => x.layer))];
+      body = `<div class="p-sec"><div class="trio"><div><span>Privacy debt</span><b style="color:${bandColor(lp.score)}">${lp.score}</b></div><div><span>Data flows</span><b>${lp.flows}</b></div><div><span>Companies</span><b>${recs.length}</b></div></div></div>
+        ${lp.pii.length ? `<div class="p-sec"><h4>User data that leaves from here</h4><div class="p-meta" style="margin:0">${lp.pii.map((p) => `<span class="pill">${esc({ email: 'Email', phone: 'Phone', name: 'Name', address: 'Address', location: 'Location', ip: 'IP address', dob: 'Birth date', gov: 'Gov ID', card: 'Card', health: 'Health', password: 'Password', gender: 'Gender', typed: 'Typed text' }[p] || p)}</span>`).join('')}</div></div>` : ''}
+        ${recs.length ? `<div class="p-sec"><h4>Companies this layer talks to</h4><div class="p-meta" style="margin:0">${recs.map((r) => `<span class="pill">${esc(r.name)} <span class="muted">· ${esc(r.category)}</span></span>`).join('')}</div></div>` : ''}
+        <div class="p-sec"><h4>Where it leaks <span class="muted">exact lines</span></h4>${lp.top.length ? lp.top.map((f) => `<a class="link-row" href="${esc(ghl(f))}" target="_blank" rel="noopener" style="border-left:3px solid ${sevC(f.severity)}"><div><div class="t">${esc(f.title)}</div><div class="path">${esc(f.file)}${f.line ? `:${f.line}` : ''}</div></div><div class="r">${icon('external')}</div></a>`).join('') : '<div class="muted">No risky flows of personal data in this layer.</div>'}</div>
+        ${lp.prItems ? `<div class="p-sec"><h4>Coming in open PRs</h4><div class="muted" style="font-size:12.5px">${plural(lp.prItems, 'change')} in unmerged PRs would add privacy debt here. See the Privacy page.</div></div>` : ''}
+        <div class="p-sec"><button class="btn sm" data-ptab-go="blast">${icon('radar')} See the blast radius · ${plural(blastAll.length, 'layer')}</button></div>`;
+    } else if (S.panelTab === 'blast' && lp) {
+      const direct = blastAll.filter((x) => x.depth === 1), further = blastAll.filter((x) => x.depth > 1);
+      const row = (x) => { const o = L(x.id); return `<button class="link-row" data-goto-layer="${x.id}"><div><div class="t">${icon(LAYER_ICON[x.id])}${esc(lname(x.id))}</div><div class="path">${x.depth === 1 ? 'calls this layer directly' : `${x.depth} hops away`} · ${fmt(o?.files || 0)} files</div></div><div class="r" style="color:${bandColor(o?.privacy?.score || 0)}">${o?.privacy?.score ?? 0}<small>privacy debt</small></div></button>`; };
+      body = `<div class="p-sec"><div class="trio"><div><span>Blast radius</span><b style="color:${blastAll.length ? 'var(--crit)' : 'var(--good)'}">${blastAll.length}</b></div><div><span>Direct callers</span><b>${direct.length}</b></div><div><span>Leaks here</span><b>${lp.flows}</b></div></div></div>
+        <div class="p-sec"><p class="muted" style="margin:0;font-size:12.5px">${lp.flows || lp.recipients.length ? `Every layer below calls into ${esc(l.name.split(' /')[0])}, directly or through others. User data they handle can reach its ${plural(lp.flows || lp.recipients.length, lp.flows ? 'leak' : 'outside company', lp.flows ? 'leaks' : 'outside companies')}. On the graph they're the orange lines.` : `These layers call into ${esc(l.name.split(' /')[0])}. It doesn't leak user data today, but anything added here would reach them.`}</p></div>
+        <div class="p-sec"><h4><span class="dir-down">Calls it directly</span> <span class="muted">${direct.length}</span></h4>${direct.length ? `<div class="chain">${direct.map(row).join('')}</div>` : '<div class="muted">No other layer calls into this one.</div>'}</div>
+        ${further.length ? `<div class="p-sec"><h4>Through other layers <span class="muted">${further.length}</span></h4><div class="chain">${further.map(row).join('')}</div></div>` : ''}`;
+    } else if (S.panelTab === 'summary') {
       const deep = S.deep[l.id];
       body = `<div class="p-sec"><h4>Where it is heading</h4>${scoreTrack([{ v: l.score, label: 'today', cls: 'now' }, { v: l.score90, label: '90 days', cls: 'future' }, { v: l.whatIfAllMerged, label: 'all PRs merged', cls: 'what' }])}</div>
         ${l.narrative ? `<div class="p-sec"><div class="narr"><div class="who">${icon('sparkles')} AI assessment</div>${keyPoints(l.narrative, 2)}</div></div>` : ''}
@@ -996,6 +1051,7 @@
   function bindPanel(el) {
     $$('[data-close]', el).forEach((b) => b.addEventListener('click', () => select(null)));
     $$('[data-ptab]', el).forEach((b) => b.addEventListener('click', () => { S.panelTab = b.dataset.ptab; renderPanel(); }));
+    $$('[data-ptab-go]', el).forEach((b) => b.addEventListener('click', () => { S.panelTab = b.dataset.ptabGo; renderPanel(); }));
     $$('[data-deep]', el).forEach((b) => b.addEventListener('click', () => deepDive(b.dataset.deep)));
     $$('[data-drill]', el).forEach((b) => b.addEventListener('click', () => drillInto(b.dataset.drill)));
     $$('[data-show-scenario]', el).forEach((b) => b.addEventListener('click', () => { const id = b.dataset.showScenario; S.drill = null; G.rendered = false; S.sel = { type: 'scenario', id }; setPage('arch'); requestAnimationFrame(() => select({ type: 'scenario', id })); }));
@@ -1733,6 +1789,10 @@
   $('#themeBtn').addEventListener('click', () => setTheme(effectiveTheme() === 'dark' ? 'light' : 'dark'));
   $$('#themeSeg button').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.themeOpt)));
   $('#helpBtn').addEventListener('click', openHelp); $('#helpClose').addEventListener('click', closeHelp); $('#helpBg').addEventListener('click', (e) => { if (e.target.id === 'helpBg') closeHelp(); });
+  // "More tools": everything that isn't privacy, architecture, security or hotspots, one click away
+  const moreOpen = (on) => { $('#moreTools').hidden = !on; $('#moreToggle').setAttribute('aria-expanded', String(on)); store.set('moreTools', on); };
+  $('#moreToggle').addEventListener('click', () => moreOpen($('#moreTools').hidden));
+  moreOpen(store.get('moreTools', false));
   $('#settingsBtn').addEventListener('click', openSheet); $('#sheetClose').addEventListener('click', closeSheet); $('#sheetCancel').addEventListener('click', closeSheet); $('#sheetBg').addEventListener('click', closeSheet); $('#sheetSave').addEventListener('click', saveSheet);
   $('#sDocFile').addEventListener('change', async (e) => { const f = e.target.files[0]; if (!f) return; $('#sDoc').value = await f.text(); $('#sDocName').textContent = f.name; store.set('docName', f.name); });
   $('#daySlider').addEventListener('input', (e) => setDay(e.target.value));
@@ -1762,7 +1822,7 @@
     if (e.key === '/' && view === 'landing') { e.preventDefault(); $('#heroInput').focus(); return; }
     if (e.key === '?') { openHelp(); return; }
     if (view !== 'dash') return;
-    const pages = ['overview', 'arch', 'security', 'hotspots', 'prs', 'backlog', 'people', 'timeline', 'report'];
+    const pages = ['privacy', 'pdebt', 'arch', 'security', 'hotspots', 'overview', 'prs', 'backlog', 'report'];
     if (/^[1-9]$/.test(e.key)) { setPage(pages[+e.key - 1]); return; }
     if (S.page !== 'arch') return;
     if (e.key === 'ArrowRight') { setDay(S.day + 1); e.preventDefault(); }
@@ -1774,6 +1834,8 @@
   /* =====================================================================
      Boot
      ===================================================================== */
+  // Shared with public/incidents.js (Investigations, MITRE map, Blast radius tabs)
+  window.NarcUI = { S, $, $$, esc, icon, hydrate, plural, acc, bandColor, bandBadge, bandDot, lname, LAYER_ICON, setPage, toast };
   setTheme(store.get('theme', 'system'));
   $('#paletteBtn kbd').textContent = isMac ? '⌘K' : 'Ctrl K';
   hydrate();

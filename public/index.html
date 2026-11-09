@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Narc — Tech Debt Radar</title>
+  <title>Narc — Who's watching your users?</title>
   <meta name="color-scheme" content="light dark" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236e5cf6'/><circle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='2.5' stroke-opacity='.55'/><path d='M16 16 L24 10' stroke='white' stroke-width='2.5' stroke-linecap='round'/><circle cx='16' cy='16' r='2.6' fill='white'/></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -36,37 +36,52 @@
 
     <!-- ===== Landing ===== -->
     <main class="landing" id="landing">
-      <section class="hero">
-        <div class="hero-badge"><i data-icon="sparkles"></i> Forecast tech debt before it merges</div>
-        <h1>Where is your codebase<br />accumulating debt?</h1>
-        <p class="hero-sub">Paste a GitHub repo. Narc maps every layer and how they depend on each other, reads unmerged PRs and your roadmap, and shows how debt will spread over the next 90 days.</p>
-        <form class="hero-form" id="heroForm" novalidate>
-          <label class="sr-only" for="heroInput">GitHub repository URL</label>
-          <div class="hero-input">
-            <i data-icon="github"></i>
-            <input id="heroInput" placeholder="github.com/owner/repo" autocomplete="off" spellcheck="false" />
-            <kbd class="hint">/</kbd>
+      <section class="hero hero-pv">
+        <div class="hero-l">
+          <div class="hero-badge pv-badge"><span class="rec-dot"></span> Big Brother is in your codebase</div>
+          <h1>Who's watching<br /><span class="hl">your users?</span></h1>
+          <p class="hero-sub">Paste any GitHub repo. Narc finds every company the app sends its users' data to, the exact line that sends it, and what each company does with it, researched live.</p>
+          <form class="hero-form" id="heroForm" novalidate>
+            <label class="sr-only" for="heroInput">GitHub repository URL</label>
+            <div class="hero-input">
+              <i data-icon="github"></i>
+              <input id="heroInput" placeholder="github.com/owner/repo" autocomplete="off" spellcheck="false" />
+              <kbd class="hint">/</kbd>
+            </div>
+            <button class="btn primary lg" type="submit">Expose it <i data-icon="arrow-right"></i></button>
+          </form>
+          <p class="field-error" id="heroError" role="alert" hidden></p>
+          <div class="examples">
+            <span>Try</span>
+            <button class="chip" data-repo="mfts/papermark">mfts/papermark</button>
+            <button class="chip" data-repo="dubinc/dub">dubinc/dub</button>
+            <button class="chip" data-repo="umami-software/umami">umami-software/umami</button>
+            <button class="chip ghost" id="demoBtn"><i data-icon="play"></i> Tech-debt demo</button>
           </div>
-          <button class="btn primary lg" type="submit">Analyze <i data-icon="arrow-right"></i></button>
-        </form>
-        <p class="field-error" id="heroError" role="alert" hidden></p>
-        <div class="examples">
-          <span>Try</span>
-          <button class="chip" data-repo="langchain-ai/open-canvas">langchain-ai/open-canvas</button>
-          <button class="chip" data-repo="fastapi/full-stack-fastapi-template">fastapi/full-stack-fastapi-template</button>
-          <button class="chip" data-repo="expressjs/express">expressjs/express</button>
-          <button class="chip ghost" id="demoBtn"><i data-icon="play"></i> Explore demo</button>
+          <blockquote class="orwell" id="orwell"><span id="orwellQ">"Big Brother is watching you."</span><cite>George Orwell, <i>1984</i></cite></blockquote>
+          <div class="hero-proof"><span><i data-icon="shield"></i> Runs on your laptop</span><span><i data-icon="search"></i> Cited with Tavily + Exa</span><span><i data-icon="pr"></i> Catches PRs before merge</span></div>
+          <div class="ai-note" id="aiNote"></div>
         </div>
-        <div class="ai-note" id="aiNote"></div>
+        <div class="hero-r" aria-hidden="true">
+          <div class="crt">
+            <div class="crt-top"><span class="crt-rec"><i></i>LIVE</span><span>TELESCREEN · 1984</span><span id="crtClock">00:00:00</span></div>
+            <svg class="crt-svg" viewBox="0 0 420 300" id="crtSvg"></svg>
+            <div class="crt-foot"><span>user data sent</span><b id="crtCount">0</b><span class="crt-blink">● WATCHING</span></div>
+          </div>
+        </div>
+      </section>
+      <section class="hall" id="hall" hidden>
+        <div class="hall-h"><h2>Hall of Shame</h2><span>Real scans of popular open-source apps. Click one to see the evidence.</span></div>
+        <div class="hall-grid" id="hallGrid"></div>
       </section>
       <section class="recent" id="recent" hidden>
         <h2>Recent analyses</h2>
         <div class="recent-list" id="recentList"></div>
       </section>
-      <section class="how">
-        <div class="how-item"><span class="how-n">1</span><div><b>Map</b><p>Every file is assigned to a layer, and the real import graph between layers is built.</p></div></div>
-        <div class="how-item"><span class="how-n">2</span><div><b>Read</b><p>Every open PR diff and your Jira board, issues or design docs are checked for debt.</p></div></div>
-        <div class="how-item"><span class="how-n">3</span><div><b>Forecast</b><p>A 90-day score for each layer, including debt inherited from the layers it depends on.</p></div></div>
+      <section class="how how-pv">
+        <div class="how-item"><span class="how-n">1</span><div><b>Scan</b><p>Every tracker, ad pixel, AI model, CRM and email service in the code and its open PRs.</p></div></div>
+        <div class="how-item"><span class="how-n">2</span><div><b>Research</b><p>Tavily and Exa read each company's own privacy policy: do they sell it, use it for ads, train AI on it?</p></div></div>
+        <div class="how-item"><span class="how-n">3</span><div><b>Prove</b><p>The exact line that sends each piece of data, and every request Narc itself made. Nothing else leaves.</p></div></div>
       </section>
     </main>
 
@@ -84,19 +99,25 @@
     <div class="dash" id="dash" hidden>
       <nav class="sidebar" id="sidebar" aria-label="Sections">
         <div class="nav" role="tablist">
-          <button class="nav-item" data-page="overview" role="tab"><i data-icon="grid"></i><span>Overview</span><kbd>1</kbd></button>
-          <div class="nav-group">Analyze</div>
-          <button class="nav-item" data-page="arch" role="tab"><i data-icon="network"></i><span>Architecture</span><kbd>2</kbd></button>
-          <button class="nav-item" data-page="security" role="tab"><i data-icon="shield"></i><span>Security</span><em class="nav-count" id="navSec"></em><kbd>3</kbd></button>
-          <button class="nav-item" data-page="hotspots" role="tab"><i data-icon="flame"></i><span>Hotspots</span><kbd>4</kbd></button>
-          <div class="nav-group">Change</div>
-          <button class="nav-item" data-page="prs" role="tab"><i data-icon="pr"></i><span>Pull requests</span><em class="nav-count" id="navPrs"></em><kbd>5</kbd></button>
-          <button class="nav-item" data-page="backlog" role="tab"><i data-icon="list"></i><span>Backlog</span><em class="nav-count" id="navBacklog"></em><kbd>6</kbd></button>
-          <div class="nav-group">Context</div>
-          <button class="nav-item" data-page="people" role="tab"><i data-icon="users"></i><span>People</span><em class="nav-count" id="navPeople"></em><kbd>7</kbd></button>
-          <button class="nav-item" data-page="timeline" role="tab"><i data-icon="clock"></i><span>Timeline</span><kbd>8</kbd></button>
-          <div class="nav-group">Output</div>
-          <button class="nav-item" data-page="report" role="tab"><i data-icon="file"></i><span>Report & agents</span><kbd>9</kbd></button>
+          <div class="nav-group">Privacy</div>
+          <button class="nav-item nav-pv" data-page="privacy" role="tab"><i data-icon="radar"></i><span>Privacy</span><em class="nav-count" id="navPriv"></em><kbd>1</kbd></button>
+          <button class="nav-item" data-page="pdebt" role="tab"><i data-icon="layers"></i><span>Privacy debt</span><em class="nav-count" id="navPdebt"></em><kbd>2</kbd></button>
+          <button class="nav-item" data-page="arch" role="tab"><i data-icon="network"></i><span>Architecture</span><kbd>3</kbd></button>
+          <div class="nav-group">Code health</div>
+          <button class="nav-item" data-page="security" role="tab"><i data-icon="shield"></i><span>Security</span><em class="nav-count" id="navSec"></em><kbd>4</kbd></button>
+          <button class="nav-item" data-page="hotspots" role="tab"><i data-icon="flame"></i><span>Hotspots</span><kbd>5</kbd></button>
+          <button class="nav-more" id="moreToggle" aria-expanded="false" aria-controls="moreTools"><i data-icon="chevron"></i><span>More tools</span></button>
+          <div class="more-tools" id="moreTools" hidden>
+            <button class="nav-item" data-page="overview" role="tab"><i data-icon="grid"></i><span>Tech-debt overview</span></button>
+            <button class="nav-item" data-page="investigate" role="tab"><i data-icon="search"></i><span>Investigations</span><em class="nav-count" id="navInv"></em></button>
+            <button class="nav-item" data-page="mitre" role="tab"><i data-icon="target"></i><span>MITRE map</span></button>
+            <button class="nav-item" data-page="blast" role="tab"><i data-icon="radar"></i><span>Blast radius</span></button>
+            <button class="nav-item" data-page="prs" role="tab"><i data-icon="pr"></i><span>Pull requests</span><em class="nav-count" id="navPrs"></em></button>
+            <button class="nav-item" data-page="backlog" role="tab"><i data-icon="list"></i><span>Backlog</span><em class="nav-count" id="navBacklog"></em></button>
+            <button class="nav-item" data-page="people" role="tab"><i data-icon="users"></i><span>People</span><em class="nav-count" id="navPeople"></em></button>
+            <button class="nav-item" data-page="timeline" role="tab"><i data-icon="clock"></i><span>Timeline</span></button>
+            <button class="nav-item" data-page="report" role="tab"><i data-icon="file"></i><span>Report & agents</span></button>
+          </div>
         </div>
         <div class="side-section">
           <div class="side-title">Layers <span class="muted" id="sideDay">today</span></div>
@@ -114,7 +135,8 @@
               <div class="crumbs" id="graphCrumbs"></div>
               <div class="toolbar-float">
                 <div class="seg" role="radiogroup" aria-label="Color by">
-                  <button data-color="total" class="on" role="radio" aria-checked="true">Total debt</button>
+                  <button data-color="privacy" role="radio" aria-checked="false">Privacy</button>
+                  <button data-color="total" class="on" role="radio" aria-checked="true">Tech debt</button>
                   <button data-color="pending" role="radio" aria-checked="false">PR debt</button>
                   <button data-color="inherited" role="radio" aria-checked="false">Inherited</button>
                   <button data-color="security" role="radio" aria-checked="false">Security</button>
@@ -141,12 +163,17 @@
           </div>
         </section>
         <section class="page" id="page-security" data-page="security"></section>
+        <section class="page" id="page-privacy" data-page="privacy"></section>
+        <section class="page" id="page-pdebt" data-page="pdebt"></section>
         <section class="page" id="page-prs" data-page="prs"></section>
         <section class="page" id="page-backlog" data-page="backlog"></section>
         <section class="page" id="page-hotspots" data-page="hotspots"></section>
         <section class="page" id="page-people" data-page="people"></section>
         <section class="page" id="page-timeline" data-page="timeline"></section>
         <section class="page" id="page-report" data-page="report"></section>
+        <section class="page" id="page-investigate" data-page="investigate"></section>
+        <section class="page" id="page-mitre" data-page="mitre"></section>
+        <section class="page" id="page-blast" data-page="blast"></section>
       </div>
 
       <aside class="panel" id="panel" hidden aria-label="Details"></aside>
@@ -176,6 +203,7 @@
           <label>Fast model <span class="muted">(light calls)</span><input id="sFastModel" placeholder="same as model, e.g. gpt-4.1-mini" list="modelList" /></label>
         </div>
         <label>Base URL<input id="sBaseUrl" placeholder="https://api.openai.com/v1" /></label>
+        <label class="check"><input type="checkbox" id="sLocalAi" /> <span><b>Local AI</b>: run the AI on this laptop (Ollama). Your code and PRs never leave it. Slower.</span></label>
         <datalist id="modelList"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-5-nano"><option value="gpt-4.1"><option value="gpt-4.1-mini"></datalist>
         <p class="hint-text">The fast model handles layer checks, doc extraction, backlog mapping and narratives; gpt-4.1-mini or gpt-5-nano make these about 2× faster. Without a key Narc runs on static analysis only. With a key you also get PR reviews, backlog mapping, narratives and deep dives. Repeat runs reuse cached AI answers.</p>
       </section>
@@ -227,5 +255,8 @@
 
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <script src="app.js"></script>
+  <script src="incidents.js"></script>
+  <script src="privacy.js"></script>
+  <script src="landing.js"></script>
 </body>
 </html>
