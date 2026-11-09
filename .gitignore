@@ -3,3 +3,4 @@ node_modules
 .narc-cache
 .DS_Store
 *.log
+.venv/
