@@ -1,12 +1,16 @@
 # Narc architecture
 
-Narc is a single Node.js process (no dependencies, Node 18+) that serves a vanilla-JS UI and runs analyses as background jobs. One analysis = one GitHub repo, read once, then examined by a set of static analysers and optional AI agents. Results stream to the browser over Server-Sent Events.
+Narc is a single Node.js process (no dependencies, Node 18+) that serves a vanilla-JS UI and runs analyses as background jobs. One analysis = one GitHub repo, read once, then examined by a set of static analysers and optional AI agents. Results stream to the browser over Server-Sent Events. A second entry point, `mcp.js`, runs the same pipeline for AI agents over the Model Context Protocol.
 
 ```mermaid
 flowchart LR
   UI["Browser UI<br/>public/*.js"] -- "POST /api/jobs" --> S["server.js<br/>jobs + SSE + egress log"]
   S -- "progress / partial / done" --> UI
   S --> P["lib/pipeline.js<br/>analyze()"]
+  AG["MCP client<br/>Claude Code / Desktop"] -- "tools/call (stdio)" --> MCP["mcp.js<br/>6 tools + 30 min cache"]
+  MCP --> P
+  MCP --> PRV
+  MCP --> SEC
   P --> GH["lib/github.js<br/>tarball, PRs, diffs, issues"]
   P --> ST["Static analysis<br/>ingest · deps · layers · metrics · graph"]
   P --> SEC["lib/security.js<br/>rules · surface · OSV CVEs · MITRE"]
@@ -33,6 +37,24 @@ flowchart LR
 | `POST /api/privacy/research` | Tavily + Exa dossier on one data recipient (cached 7 days) |
 | `GET /api/egress?jobId=` | Every outbound request Narc made since the job started |
 | `GET /api/demo`, `GET /api/incidents` | Built-in demo data (synthetic) |
+
+## MCP server (`mcp.js`)
+
+A separate process, started by the MCP client (`.mcp.json` registers it for Claude Code in this repo). It doesn't need `server.js` running: it imports `analyze()` directly and reads the same `.env`.
+
+* **Transport.** JSON-RPC 2.0 over stdio, one message per line, implemented by hand (no SDK, so Narc stays dependency-free). It handles `initialize`, `ping`, `tools/list` and `tools/call`, and ignores notifications. stdout carries protocol messages only; `console.log` is redirected to stderr so nothing in `lib/` can corrupt the stream.
+* **Cache.** One analysis per repo, kept in memory for 30 minutes. Concurrent calls for the same repo share one run, and failures are never cached. So `scan_repo` followed by `privacy_report`, `security_report` and `pr_risks` costs one analysis.
+* **Progress.** If the client sends a `progressToken`, the pipeline's `progress` events become `notifications/progress` messages.
+* **Errors.** A failed tool call comes back as a result with `isError: true` and a readable message (rate limit, bad repo name), so the agent can react instead of the server dying.
+
+| Tool | Built from | Network |
+|---|---|---|
+| `scan_repo` | `analyze()` → overview: privacy grade, recipients, top flows, security summary, debt index | GitHub, OSV.dev, AI if configured |
+| `privacy_report` | `result.privacy`: recipients, flows with GitHub line links, inventory, PR changes | cached analysis |
+| `security_report` | `result.security`: findings (CWE, MITRE), CVEs, attack surface, threat scenarios | cached analysis |
+| `pr_risks` | `result.prs` joined with `privacy.prChanges` | cached analysis |
+| `check_code` | `scanPrivacy()` + `scanText()` on one snippet | **none** |
+| `research_recipient` | `researchRecipient()` | Tavily, Exa |
 
 ## The pipeline (`lib/pipeline.js`)
 
@@ -122,6 +144,7 @@ No build step: the server serves these files as-is.
 | What | Where | Lifetime |
 |---|---|---|
 | Jobs and results | server memory | 6 hours, lost on restart |
+| MCP analyses | `mcp.js` memory | 30 minutes, lost when the MCP client stops it |
 | AI answers, search results, OSV lookups | `.narc-cache/` (git-ignored) | until deleted; searches 12 h to 7 days |
 | Snapshots for the Timeline | `.narc-cache/` | until deleted |
 | Keys | `.env` (git-ignored) or browser localStorage | yours |
@@ -133,3 +156,4 @@ No build step: the server serves these files as-is.
 * The recipient catalogue covers common SDKs; a vendor called through raw HTTP to an unknown host isn't named.
 * Local AI is slower than a hosted model (a small repo takes about two minutes on a laptop) and its reviews are less detailed.
 * Jobs live in memory, so restarting the server loses open analyses (snapshots and caches survive).
+* The MCP server doesn't wrap `fetch`, so it has no egress log (*What Narc sent* is web-only). Its outbound requests are the same as an analysis in the web app.
